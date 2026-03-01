@@ -378,3 +378,27 @@
         flex-wrap: wrap;
     }
 }
+
+/* File parsing progress container */
+.file-progress-container {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding-top: 0.5rem;
+}
+
+.file-result-container {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding-top: 0.5rem;
+}
+
+.parsing-result-summary {
+    padding: 0.25rem 0.5rem;
+    background-color: rgba(40, 167, 69, 0.05);
+    border-radius: 0.25rem;
+    border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.alert-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}

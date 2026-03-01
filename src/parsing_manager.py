@@ -6,13 +6,15 @@ Handles document parsing state and result storage.
 import os
 import json
 import logging
+import threading
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path
 
 from src.document_parser.parser_factory import ParserFactory
 from src.nlp.knowledge_extractor import KnowledgeExtractor
 from src.nlp.triplet_extractor import TripletExtractor
+from src.progress_manager import ProgressManager, TaskType, TaskStatus
 from config.settings import Config
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,10 @@ class ParsingManager:
         self._knowledge_extractor = None
         self._triplet_extractor = None
         self._graph_builder = None
+
+        # Progress manager for tracking parsing progress
+        progress_data_folder = os.path.join(self.parsed_data_folder, 'progress')
+        self.progress_manager = ProgressManager(progress_data_folder)
 
     def _load_state(self) -> None:
         """Load parsing state from file"""
@@ -192,6 +198,24 @@ class ParsingManager:
 
             # Save parsed text
             parsed_text = result.get('content', '')
+
+            # Check if parsed text is empty or contains only whitespace
+            if not parsed_text or not parsed_text.strip():
+                error_msg = f"No text content extracted from file: {filename}. The file may be empty, contain only images, or have an unsupported format."
+                logger.error(error_msg)
+                self.update_file_state(
+                    filename,
+                    parsed=False,
+                    error=error_msg,
+                    parsed_at=datetime.now().isoformat(),
+                    metadata=result.get('metadata', {})
+                )
+                return {
+                    'success': False,
+                    'error': error_msg,
+                    'filename': filename
+                }
+
             with open(parsed_text_path, 'w', encoding='utf-8') as f:
                 f.write(parsed_text)
 
@@ -638,3 +662,267 @@ class ParsingManager:
         safe_name = ''.join(c if c.isalnum() else '_' for c in base_name)
         graph_dir = os.path.join(self.parsed_data_folder, 'graph_builds')
         return os.path.join(graph_dir, f"{safe_name}_graph.json")
+
+    # Progress tracking methods
+    def parse_file_async(self, filename: str, progress_callback: Optional[Callable] = None) -> str:
+        """
+        Parse a document file asynchronously with progress tracking.
+
+        Args:
+            filename: Name of the file to parse
+            progress_callback: Optional callback function for progress updates
+
+        Returns:
+            Task ID for tracking progress
+        """
+        file_path = os.path.join(self.upload_folder, filename)
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            error_msg = f"File not found: {filename}"
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
+
+        # Create progress task
+        task_id = self.progress_manager.create_task(
+            filename=filename,
+            task_type=TaskType.PARSE,
+            total_steps=100,  # Will be updated with actual page count
+            metadata={'file_path': file_path}
+        )
+
+        # Start parsing in background thread
+        thread = threading.Thread(
+            target=self._parse_file_worker,
+            args=(filename, task_id, progress_callback),
+            daemon=True
+        )
+        thread.start()
+
+        logger.info(f"Started async parsing for {filename} with task ID: {task_id}")
+        return task_id
+
+    def _parse_file_worker(self, filename: str, task_id: str,
+                          progress_callback: Optional[Callable] = None) -> None:
+        """
+        Worker function for async parsing.
+
+        Args:
+            filename: Name of the file to parse
+            task_id: Progress task ID
+            progress_callback: Optional callback function for progress updates
+        """
+        file_path = os.path.join(self.upload_folder, filename)
+        parsed_text_path = self.get_parsed_text_path(filename)
+
+        try:
+            # Get appropriate parser
+            parser = self.parser_factory.get_parser(file_path)
+
+            # Validate file
+            if not parser.validate(file_path):
+                error_msg = f"Invalid or unsupported file format: {filename}"
+                self.progress_manager.fail_task(task_id, error_msg)
+                return
+
+            # Update progress: validation passed
+            self.progress_manager.update_progress(
+                task_id,
+                current_step=5,
+                step_description="File validated",
+                message=f"Validated file format for {filename}"
+            )
+
+            # Parse the file with progress updates if parser supports it
+            logger.info(f"Async parsing file: {filename}")
+
+            # Check if parser supports progress callback
+            if hasattr(parser, 'parse_with_progress'):
+                # Use progress-aware parsing
+                result = parser.parse_with_progress(
+                    file_path,
+                    progress_callback=lambda step, total, desc, msg: self._handle_progress_update(
+                        task_id, step, total, desc, msg, progress_callback
+                    )
+                )
+            else:
+                # Fall back to regular parsing with simulated progress
+                self.progress_manager.update_progress(
+                    task_id,
+                    current_step=10,
+                    step_description="Starting parsing",
+                    message=f"Parsing {filename}..."
+                )
+
+                result = parser.parse(file_path)
+
+                # Simulate progress for parsers without progress support
+                if result.get('success', False):
+                    metadata = result.get('metadata', {})
+                    page_count = metadata.get('page_count', 1)
+
+                    # Simulate progress based on page count
+                    for page_num in range(page_count):
+                        progress = 10 + int((page_num + 1) * 80 / page_count)
+                        self.progress_manager.update_progress(
+                            task_id,
+                            current_step=progress,
+                            step_description=f"Parsing page {page_num + 1}/{page_count}",
+                            message=f"Extracting text from page {page_num + 1}"
+                        )
+                        # Simulate delay for progress visualization
+                        import time
+                        time.sleep(0.1)
+
+            # Check if parsing was successful
+            if not result.get('success', False):
+                error_msg = result.get('error', 'Unknown parsing error')
+                self.progress_manager.fail_task(task_id, error_msg)
+                return
+
+            # Update progress: parsing completed
+            self.progress_manager.update_progress(
+                task_id,
+                current_step=90,
+                step_description="Parsing completed",
+                message=f"Text extraction completed for {filename}"
+            )
+
+            # Save parsed text
+            parsed_text = result.get('content', '')
+            if not parsed_text or not parsed_text.strip():
+                error_msg = f"No text content extracted from file: {filename}"
+                self.progress_manager.fail_task(task_id, error_msg)
+                return
+
+            with open(parsed_text_path, 'w', encoding='utf-8') as f:
+                f.write(parsed_text)
+
+            # Calculate statistics
+            text_length = len(parsed_text)
+            word_count = len(parsed_text.split())
+
+            # Update state
+            self.update_file_state(
+                filename,
+                parsed=True,
+                parsed_at=datetime.now().isoformat(),
+                error=None,
+                text_length=text_length,
+                word_count=word_count,
+                metadata=result.get('metadata', {})
+            )
+
+            # Update progress: saving results
+            self.progress_manager.update_progress(
+                task_id,
+                current_step=95,
+                step_description="Saving parsed text",
+                message=f"Saving {text_length} characters to disk"
+            )
+
+            # Mark task as completed
+            result_data = {
+                'filename': filename,
+                'text_length': text_length,
+                'word_count': word_count,
+                'metadata': result.get('metadata', {}),
+                'parsed_at': datetime.now().isoformat()
+            }
+
+            self.progress_manager.complete_task(
+                task_id,
+                result_data,
+                message=f"Successfully parsed {filename} ({text_length} chars, {word_count} words)"
+            )
+
+            logger.info(f"Async parsing completed for {filename}")
+
+        except Exception as e:
+            error_msg = f"Error parsing file {filename}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            self.progress_manager.fail_task(task_id, error_msg)
+
+    def _handle_progress_update(self, task_id: str, step: int, total: int,
+                               description: str, message: str,
+                               external_callback: Optional[Callable] = None) -> None:
+        """
+        Handle progress update from parser.
+
+        Args:
+            task_id: Progress task ID
+            step: Current step number
+            total: Total steps
+            description: Step description
+            message: Progress message
+            external_callback: Optional external callback function
+        """
+        # Update progress manager
+        self.progress_manager.update_progress(
+            task_id,
+            current_step=step,
+            step_description=description,
+            message=message,
+            metadata_updates={'total_steps': total} if total > 0 else None
+        )
+
+        # Call external callback if provided
+        if external_callback:
+            try:
+                external_callback(step, total, description, message)
+            except Exception as e:
+                logger.warning(f"Error in external progress callback: {e}")
+
+    def get_parsing_progress(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get parsing progress for a task.
+
+        Args:
+            task_id: Task ID
+
+        Returns:
+            Progress state dictionary or None if not found
+        """
+        state = self.progress_manager.get_task_state(task_id)
+        if not state:
+            return None
+
+        return state.to_dict()
+
+    def cancel_parsing(self, task_id: str) -> bool:
+        """
+        Cancel a parsing task.
+
+        Args:
+            task_id: Task ID
+
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.progress_manager.cancel_task(
+            task_id,
+            message="Parsing cancelled by user"
+        )
+
+    def get_all_parsing_tasks(self) -> List[Dict[str, Any]]:
+        """
+        Get all parsing tasks.
+
+        Returns:
+            List of task state dictionaries
+        """
+        tasks = self.progress_manager.get_all_tasks()
+        return [task.to_dict() for task in tasks]
+
+    def get_tasks_for_file(self, filename: str) -> List[Dict[str, Any]]:
+        """
+        Get all tasks for a specific file.
+
+        Args:
+            filename: Name of the file
+
+        Returns:
+            List of task state dictionaries for the file
+        """
+        tasks = self.progress_manager.get_tasks_by_filename(filename)
+        return [task.to_dict() for task in tasks]

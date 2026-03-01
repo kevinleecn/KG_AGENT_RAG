@@ -462,11 +462,13 @@ $(document).ready(function() {
         const fileModified = file.formatted_modified || 'Unknown';
         const fileUrl = file.url || `/uploads/${file.filename}`;
         const isParsed = file.parsed || false;
+        const textLength = file.text_length || 0;
+        const effectivelyParsed = isParsed && textLength > 0;
 
         return `
             <div class="list-group-item file-list-item uploaded-file-item"
                  data-filename="${escapeHtml(file.filename)}"
-                 data-parsed="${isParsed}"
+                 data-parsed="${effectivelyParsed}"
                  style="cursor: pointer;">
                 <div class="file-info">
                     <div class="file-icon ${file.extension.substring(1)}-file">
@@ -477,7 +479,7 @@ $(document).ready(function() {
                             <a href="${fileUrl}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation();">
                                 ${fileName}
                             </a>
-                            ${isParsed ? '<span class="badge bg-success ms-2">Parsed</span>' : ''}
+                            ${effectivelyParsed ? '<span class="badge bg-success ms-2">Parsed</span>' : ''}
                         </div>
                         <div class="d-flex justify-content-between">
                             <div class="file-size text-muted">${fileSize}</div>
@@ -486,6 +488,13 @@ $(document).ready(function() {
                     </div>
                 </div>
                 <div class="file-actions">
+                    ${!effectivelyParsed ? `
+                    <button class="btn btn-sm btn-outline-warning parse-file-btn"
+                            title="Parse document to extract knowledge"
+                            onclick="event.stopPropagation();">
+                        <i class="fas fa-cogs"></i>
+                    </button>
+                    ` : ''}
                     <button class="btn btn-sm btn-outline-info show-nodes-btn"
                             title="Show knowledge graph nodes"
                             onclick="event.stopPropagation();">
@@ -496,8 +505,221 @@ $(document).ready(function() {
                         <i class="fas fa-download"></i>
                     </a>
                 </div>
+                <!-- Progress container (hidden by default) -->
+                <div class="file-progress-container mt-2 d-none">
+                    <!-- Progress bar will be inserted here by updateFileItemProgressUI -->
+                </div>
+                <!-- Result container (hidden by default) -->
+                <div class="file-result-container mt-2 d-none">
+                    <!-- Parsing result report will be inserted here by createParsingResultReport -->
+                </div>
             </div>
         `;
+    }
+
+    /**
+     * Update progress UI for a file list item
+     * @param {jQuery} $fileItem - File list item jQuery object
+     * @param {Object} progress - Progress data from progress tracker
+     */
+    function updateFileItemProgressUI($fileItem, progress) {
+        const $progressContainer = $fileItem.find('.file-progress-container');
+        const $resultContainer = $fileItem.find('.file-result-container');
+
+        // Hide result container if visible
+        $resultContainer.addClass('d-none').empty();
+
+        // Show progress container
+        $progressContainer.removeClass('d-none');
+
+        // Create progress bar HTML using ProgressTracker class
+        const progressBarHtml = window.progressTracker ?
+            window.progressTracker.constructor.createProgressBar(progress) :
+            `<div class="progress mt-1" style="height: 20px;">
+                <div class="progress-bar bg-info progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: ${Math.round(progress.progress * 100)}%;"
+                     aria-valuenow="${Math.round(progress.progress * 100)}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                    ${Math.round(progress.progress * 100)}% - ${progress.status}
+                </div>
+            </div>`;
+
+        // Add cancel button if task is running
+        let actionHtml = '';
+        if (progress.status === 'running') {
+            actionHtml = `
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-danger cancel-parsing-btn"
+                            data-task-id="${progress.task_id}"
+                            onclick="event.stopPropagation();">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                </div>
+            `;
+        }
+
+        $progressContainer.html(progressBarHtml + actionHtml);
+
+        // Update file item data attribute for status
+        $fileItem.data('parsing-status', progress.status);
+
+        // If task is completed, call completion handler
+        if (progress.status === 'completed') {
+            handleParsingComplete($fileItem, progress);
+        }
+        // If task failed or cancelled, call error handler
+        else if (progress.status === 'failed' || progress.status === 'cancelled') {
+            handleParsingError($fileItem, progress);
+        }
+    }
+
+    /**
+     * Handle parsing completion
+     * @param {jQuery} $fileItem - File list item jQuery object
+     * @param {Object} progress - Progress data with result
+     */
+    function handleParsingComplete($fileItem, progress) {
+        const filename = $fileItem.data('filename');
+
+        // Update file item data
+        $fileItem.data('parsed', true);
+        $fileItem.data('parsing-status', 'completed');
+
+        // Add Parsed badge
+        const $fileName = $fileItem.find('.file-name');
+        $fileName.find('.badge').remove(); // Remove any existing badge
+        $fileName.append('<span class="badge bg-success ms-2">Parsed</span>');
+
+        // Hide progress container
+        $fileItem.find('.file-progress-container').addClass('d-none').empty();
+
+        // Show result container with report
+        const $resultContainer = $fileItem.find('.file-result-container');
+        $resultContainer.removeClass('d-none');
+        $resultContainer.html(createParsingResultReport(progress));
+
+        // Remove parse button if still present
+        $fileItem.find('.parse-file-btn').remove();
+
+        // Update current document if this is the active one
+        if (currentDocument === filename) {
+            currentDocument = filename; // Already set, but ensures consistency
+        }
+
+        // Show success alert
+        const entityCount = progress.result?.entity_count || 0;
+        const relationCount = progress.result?.relationship_count || 0;
+        showAlert('success', `Document "${filename}" parsed successfully. Found ${entityCount} entities and ${relationCount} relations.`);
+
+        // Refresh file list to get updated parsing state (optional)
+        // loadUploadedFiles();
+    }
+
+    /**
+     * Handle parsing error or cancellation
+     * @param {jQuery} $fileItem - File list item jQuery object
+     * @param {Object} progress - Progress data with error
+     */
+    function handleParsingError($fileItem, progress) {
+        const filename = $fileItem.data('filename');
+        const errorMessage = progress.error || 'Parsing failed';
+
+        // Hide progress container
+        $fileItem.find('.file-progress-container').addClass('d-none').empty();
+
+        // Show error in result container
+        const $resultContainer = $fileItem.find('.file-result-container');
+        $resultContainer.removeClass('d-none');
+        // Escape error message for safe HTML insertion
+        const escapedErrorMessage = escapeHtml(errorMessage);
+        $resultContainer.html(`
+            <div class="alert alert-danger alert-sm mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                ${escapedErrorMessage}
+            </div>
+        `);
+
+        // Restore parse button
+        const $fileActions = $fileItem.find('.file-actions');
+        if (!$fileActions.find('.parse-file-btn').length) {
+            $fileActions.prepend(`
+                <button class="btn btn-sm btn-outline-warning parse-file-btn"
+                        title="Parse document to extract knowledge"
+                        onclick="event.stopPropagation();">
+                    <i class="fas fa-cogs"></i>
+                </button>
+            `);
+        }
+
+        // Show error alert
+        showAlert('danger', `Failed to parse "${filename}": ${errorMessage}`);
+    }
+
+    /**
+     * Create parsing result report HTML
+     * @param {Object} progress - Progress data with result
+     * @returns {string} HTML string for result report
+     */
+    function createParsingResultReport(progress) {
+        const result = progress.result || {};
+        const entityCount = result.entity_count || 0;
+        const relationCount = result.relationship_count || 0;
+        const textLength = result.text_length || 0;
+        const wordCount = result.word_count || 0;
+
+        // Escape all values for safe HTML insertion
+        const escapedEntityCount = escapeHtml(String(entityCount));
+        const escapedRelationCount = escapeHtml(String(relationCount));
+        const escapedTextLength = escapeHtml(String(textLength));
+        const escapedWordCount = escapeHtml(String(wordCount));
+
+        let reportHtml = `
+            <div class="parsing-result-summary">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-success me-2">
+                        <i class="fas fa-check-circle me-1"></i>Parsed
+                    </span>
+                    <span class="small text-muted">
+        `;
+
+        // Add entity and relation counts if available
+        if (entityCount > 0 || relationCount > 0) {
+            reportHtml += `${escapedEntityCount} entities · ${escapedRelationCount} relations`;
+        } else {
+            reportHtml += `${escapedTextLength} chars · ${escapedWordCount} words`;
+        }
+
+        reportHtml += `
+                    </span>
+                </div>
+            </div>
+        `;
+
+        return reportHtml;
+    }
+
+    /**
+     * Cancel parsing for a file item
+     * @param {string} taskId - Task ID to cancel
+     * @param {jQuery} $fileItem - File list item jQuery object
+     */
+    function cancelParsingForFileItem(taskId, $fileItem) {
+        if (!confirm('Are you sure you want to cancel this parsing task?')) {
+            return;
+        }
+
+        if (window.progressTracker) {
+            window.progressTracker.cancelTask(taskId)
+                .then(() => {
+                    showAlert('Parsing cancelled successfully', 'success');
+                })
+                .catch(error => {
+                    console.error('Failed to cancel parsing:', error);
+                    showAlert(`Failed to cancel parsing: ${error.message}`, 'danger');
+                });
+        }
     }
 
     /**
@@ -557,6 +779,131 @@ $(document).ready(function() {
 
         // Update current document for chat
         currentDocument = filename;
+    });
+
+    // Handle parse file button clicks
+    $(document).on('click', '.parse-file-btn', function(e) {
+        e.stopPropagation();
+
+        const $fileItem = $(this).closest('.uploaded-file-item');
+        const filename = $fileItem.data('filename');
+
+        // Disable button and show loading state
+        const $button = $(this);
+        $button.prop('disabled', true);
+        $button.html('<i class="fas fa-spinner fa-spin"></i>');
+
+        // Send async parse request
+        $.ajax({
+            url: `/parse/async/${encodeURIComponent(filename)}`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({}),
+            success: function(response) {
+                if (response.success) {
+                    const taskId = response.task_id;
+
+                    // Hide parse button and show progress container
+                    $button.hide(); // Hide but keep in DOM for potential restoration
+
+                    // Start progress tracking
+                    if (window.progressTracker) {
+                        try {
+                            window.progressTracker.startTracking(
+                                taskId,
+                                filename,
+                                // onUpdate callback
+                                function(progress) {
+                                    updateFileItemProgressUI($fileItem, progress);
+                                },
+                                // onComplete callback
+                                function(progress) {
+                                    // Already handled by updateFileItemProgressUI
+                                },
+                                // onError callback
+                                function(progress) {
+                                    // Already handled by updateFileItemProgressUI
+                                }
+                            );
+                        } catch (error) {
+                            console.error('Failed to start progress tracking:', error);
+                            showAlert('danger', 'Failed to start progress tracking. Parsing may still be running in background.');
+                            // Fallback: hide button and show generic progress
+                            $button.hide();
+                            $fileItem.find('.file-progress-container').removeClass('d-none').html(`
+                                <div class="progress mt-1" style="height: 20px;">
+                                    <div class="progress-bar bg-info progress-bar-striped progress-bar-animated"
+                                         role="progressbar"
+                                         style="width: 50%;"
+                                         aria-valuenow="50"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                        50% - Processing
+                                    </div>
+                                </div>
+                                <small class="text-muted">Parsing in progress (progress tracking error)</small>
+                            `);
+                        }
+                    } else {
+                        console.error('Progress tracker not available');
+                        showAlert('danger', 'Progress tracking not available. Parsing started in background.');
+                        // Fallback: hide button and show generic progress
+                        $button.hide();
+                        $fileItem.find('.file-progress-container').removeClass('d-none').html(`
+                            <div class="progress mt-1" style="height: 20px;">
+                                <div class="progress-bar bg-info progress-bar-striped progress-bar-animated"
+                                     role="progressbar"
+                                     style="width: 50%;"
+                                     aria-valuenow="50"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                    50% - Processing
+                                </div>
+                            </div>
+                            <small class="text-muted">Parsing in progress (progress tracking unavailable)</small>
+                        `);
+                    }
+
+                    // Show initial progress state
+                    updateFileItemProgressUI($fileItem, {
+                        task_id: taskId,
+                        filename: filename,
+                        status: 'pending',
+                        progress: 0.1,
+                        step_description: 'Starting parsing process...'
+                    });
+
+                    showAlert('info', `Started parsing "${filename}" in background. Progress will be shown below.`);
+                } else {
+                    showAlert('danger', `Failed to start parsing "${filename}": ${response.error || 'Unknown error'}`);
+                    $button.prop('disabled', false);
+                    $button.html('<i class="fas fa-cogs"></i>');
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'Failed to start parsing. Please try again.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMessage = response.error || errorMessage;
+                } catch (e) {
+                    // Use default error message
+                }
+                showAlert('danger', errorMessage);
+                $button.prop('disabled', false);
+                $button.html('<i class="fas fa-cogs"></i>');
+            }
+        });
+    });
+
+    // Handle cancel parsing button clicks
+    $(document).on('click', '.cancel-parsing-btn', function(e) {
+        e.stopPropagation();
+
+        const $button = $(this);
+        const taskId = $button.data('task-id');
+        const $fileItem = $button.closest('.uploaded-file-item');
+
+        cancelParsingForFileItem(taskId, $fileItem);
     });
 
     // Handle show nodes button clicks

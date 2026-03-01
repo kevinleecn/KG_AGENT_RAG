@@ -3,6 +3,18 @@
  * Reuses D3.js logic from graph.html
  * Provides interactive force-directed graph visualization
  */
+
+/**
+ * Escape HTML special characters to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 class GraphPreview {
     /**
      * Create a GraphPreview instance
@@ -401,11 +413,17 @@ class GraphPreview {
      * @param {object} d - Node data
      */
     handleNodeMouseOver(event, d) {
+        // Escape user-controlled data to prevent XSS
+        const escapedName = escapeHtml(d.name || '');
+        const escapedType = escapeHtml(d.type || '');
+        const escapedSourceDoc = d.source_document ? escapeHtml(d.source_document) : '';
+        const confidencePercent = d.confidence ? (d.confidence * 100).toFixed(1) : '';
+
         const tooltipContent = `
-            <strong>${d.name}</strong><br>
-            Type: ${d.type}<br>
-            ${d.source_document ? `Document: ${d.source_document}<br>` : ''}
-            ${d.confidence ? `Confidence: ${(d.confidence * 100).toFixed(1)}%<br>` : ''}
+            <strong>${escapedName}</strong><br>
+            Type: ${escapedType}<br>
+            ${escapedSourceDoc ? `Document: ${escapedSourceDoc}<br>` : ''}
+            ${confidencePercent ? `Confidence: ${escapeHtml(confidencePercent)}%<br>` : ''}
             <small>Click for details</small>
         `;
 

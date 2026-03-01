@@ -65,6 +65,7 @@ def upload_file():
 
         uploaded_files = []
         skipped_files = []
+        parsing_tasks = []
 
         for file in files:
             if file and allowed_file(file.filename):
@@ -87,6 +88,27 @@ def upload_file():
                     'url': f"/uploads/{filename}"
                 })
                 logger.info(f"Uploaded file: {filename}")
+
+                # Start async parsing automatically after upload
+                try:
+                    task_id = parsing_manager.parse_file_async(filename)
+                    parsing_tasks.append({
+                        'filename': filename,
+                        'task_id': task_id,
+                        'progress_url': f'/progress/{task_id}'
+                    })
+                    logger.info(f"Started async parsing for {filename} with task ID: {task_id}")
+                except Exception as parse_error:
+                    logger.error(f"Error starting async parsing for {filename}: {str(parse_error)}")
+                    # Fall back to sync parsing if async fails
+                    try:
+                        parse_result = parsing_manager.parse_file(filename)
+                        if parse_result.get('success', False):
+                            logger.info(f"Fallback sync parsing succeeded for {filename}")
+                        else:
+                            logger.warning(f"Fallback sync parsing failed for {filename}")
+                    except Exception as sync_error:
+                        logger.error(f"Fallback sync parsing also failed for {filename}: {str(sync_error)}")
             else:
                 skipped_files.append(file.filename)
                 logger.warning(f"Skipped invalid file: {file.filename}")
@@ -100,6 +122,11 @@ def upload_file():
 
         if skipped_files:
             response['warning'] = f'Skipped {len(skipped_files)} invalid file(s)'
+
+        if parsing_tasks:
+            response['parsing_tasks'] = parsing_tasks
+            response['parsing_started'] = len(parsing_tasks)
+            response['parsing_message'] = f'Started parsing for {len(parsing_tasks)} file(s) in background'
 
         return jsonify(response)
 
@@ -325,6 +352,145 @@ def get_parsing_status():
 
     except Exception as e:
         logger.error(f"Error getting parsing status: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}'
+        }), 500
+
+
+# Progress tracking endpoints
+@app.route('/parse/async/<filename>', methods=['POST'])
+def parse_file_async(filename):
+    """Start asynchronous parsing of a file with progress tracking"""
+    try:
+        # Check if file exists
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if not os.path.exists(filepath):
+            return jsonify({
+                'success': False,
+                'error': f'File not found: {filename}'
+            }), 404
+
+        # Start async parsing
+        task_id = parsing_manager.parse_file_async(filename)
+
+        return jsonify({
+            'success': True,
+            'task_id': task_id,
+            'filename': filename,
+            'message': f'Started asynchronous parsing for {filename}',
+            'progress_url': f'/progress/{task_id}'
+        })
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found for async parsing {filename}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 404
+
+    except Exception as e:
+        logger.error(f"Error starting async parsing for {filename}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}'
+        }), 500
+
+
+@app.route('/progress/<task_id>', methods=['GET'])
+def get_progress(task_id):
+    """Get progress status for a task"""
+    try:
+        progress = parsing_manager.get_parsing_progress(task_id)
+
+        if not progress:
+            return jsonify({
+                'success': False,
+                'error': f'Task not found: {task_id}'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'progress': progress
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting progress for task {task_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}'
+        }), 500
+
+
+@app.route('/progress/all', methods=['GET'])
+def get_all_progress():
+    """Get progress status for all tasks"""
+    try:
+        tasks = parsing_manager.get_all_parsing_tasks()
+
+        return jsonify({
+            'success': True,
+            'total_tasks': len(tasks),
+            'tasks': tasks
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting all progress: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}'
+        }), 500
+
+
+@app.route('/progress/cancel/<task_id>', methods=['POST'])
+def cancel_progress(task_id):
+    """Cancel a parsing task"""
+    try:
+        success = parsing_manager.cancel_parsing(task_id)
+
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': f'Task not found or cannot be cancelled: {task_id}'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'task_id': task_id,
+            'message': f'Task {task_id} cancelled successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error cancelling task {task_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}'
+        }), 500
+
+
+@app.route('/progress/file/<filename>', methods=['GET'])
+def get_progress_for_file(filename):
+    """Get progress status for all tasks of a file"""
+    try:
+        # Check if file exists
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if not os.path.exists(filepath):
+            return jsonify({
+                'success': False,
+                'error': f'File not found: {filename}'
+            }), 404
+
+        tasks = parsing_manager.get_tasks_for_file(filename)
+
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'total_tasks': len(tasks),
+            'tasks': tasks
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting progress for file {filename}: {str(e)}")
         return jsonify({
             'success': False,
             'error': f'Internal server error: {str(e)}'
