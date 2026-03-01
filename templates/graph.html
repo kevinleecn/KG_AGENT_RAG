@@ -1,0 +1,686 @@
+{% extends "base.html" %}
+
+{% block title %}Knowledge Graph Visualization - KG QA Demo{% endblock %}
+
+{% block head_extra %}
+<!-- D3.js for graph visualization -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+    .graph-container {
+        width: 100%;
+        height: 600px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #fff;
+        position: relative;
+    }
+
+    .graph-toolbar {
+        margin-bottom: 1rem;
+    }
+
+    .node {
+        stroke: #fff;
+        stroke-width: 1.5px;
+        cursor: pointer;
+    }
+
+    .node text {
+        font-size: 10px;
+        pointer-events: none;
+    }
+
+    .link {
+        stroke: #999;
+        stroke-opacity: 0.6;
+        stroke-width: 1px;
+    }
+
+    .link-label {
+        font-size: 8px;
+        fill: #666;
+        pointer-events: none;
+    }
+
+    .tooltip {
+        position: absolute;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        max-width: 300px;
+    }
+
+    .legend {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .legend-item {
+        display: inline-block;
+        margin-right: 15px;
+    }
+
+    .legend-color {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 5px;
+        border-radius: 2px;
+    }
+
+    .graph-controls {
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <!-- Page Header -->
+        <div class="page-header mb-4">
+            <h1 class="display-5">
+                <i class="fas fa-project-diagram text-primary me-2"></i>Knowledge Graph Visualization
+            </h1>
+            <p class="lead">
+                Interactive visualization of extracted entities and relationships.
+            </p>
+        </div>
+
+        <!-- Controls Card -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-sliders-h me-2"></i>Graph Controls
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="documentSelect" class="form-label">Select Document</label>
+                            <select class="form-select" id="documentSelect">
+                                <option value="">All Documents (Combined Graph)</option>
+                                <!-- Documents will be populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entityTypeFilter" class="form-label">Filter by Entity Type</label>
+                            <select class="form-select" id="entityTypeFilter" multiple>
+                                <!-- Entity types will be populated dynamically -->
+                            </select>
+                            <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple types</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="relationshipTypeFilter" class="form-label">Filter by Relationship Type</label>
+                            <select class="form-select" id="relationshipTypeFilter" multiple>
+                                <!-- Relationship types will be populated dynamically -->
+                            </select>
+                            <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple types</small>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex">
+                            <button type="button" class="btn btn-primary" id="refreshGraphBtn">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh Graph
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="resetFiltersBtn">
+                                <i class="fas fa-times me-2"></i>Reset Filters
+                            </button>
+                            <button type="button" class="btn btn-outline-success" id="exportGraphBtn">
+                                <i class="fas fa-download me-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualization Card -->
+        <div class="card shadow">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-network me-2"></i>Interactive Graph
+                </h5>
+                <div>
+                    <span class="badge bg-info me-2" id="nodeCount">0 nodes</span>
+                    <span class="badge bg-secondary" id="linkCount">0 links</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Loading overlay -->
+                <div class="loading-overlay" id="graphLoading">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading graph data...</p>
+                    </div>
+                </div>
+
+                <!-- Graph container -->
+                <div class="graph-container" id="graphContainer">
+                    <div class="tooltip" id="graphTooltip" style="display: none;"></div>
+                </div>
+
+                <!-- Legend -->
+                <div class="legend mt-3" id="graphLegend">
+                    <strong>Legend:</strong>
+                    <div id="legendItems">
+                        <!-- Legend items will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Card -->
+        <div class="card shadow mt-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Graph Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="graphStatistics">
+                    <!-- Statistics will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+// Global variables
+let graphData = null;
+let simulation = null;
+let svg = null;
+let nodes = [];
+let links = [];
+let nodeColorScale = null;
+let linkColorScale = null;
+
+// Color schemes for entity types
+const colorSchemes = {
+    categorical: d3.scaleOrdinal(d3.schemeCategory10),
+    set3: d3.scaleOrdinal(d3.schemeSet3),
+    pastel1: d3.scaleOrdinal(d3.schemePastel1)
+};
+
+// Initialize when document is ready
+$(document).ready(function() {
+    // Load uploaded documents
+    loadDocuments();
+
+    // Load initial graph data
+    loadGraphData();
+
+    // Set up event handlers
+    $('#refreshGraphBtn').click(loadGraphData);
+    $('#resetFiltersBtn').click(resetFilters);
+    $('#exportGraphBtn').click(exportGraph);
+    $('#documentSelect').change(function() {
+        loadGraphData($(this).val());
+    });
+
+    // Apply filters when selection changes
+    $('#entityTypeFilter').change(applyFilters);
+    $('#relationshipTypeFilter').change(applyFilters);
+
+    // Initialize tooltip
+    initTooltip();
+});
+
+// Load uploaded documents for dropdown
+function loadDocuments() {
+    $.ajax({
+        url: '/files',
+        method: 'GET',
+        success: function(response) {
+            if (response.success) {
+                const select = $('#documentSelect');
+                select.empty();
+                select.append('<option value="">All Documents (Combined Graph)</option>');
+
+                response.files.forEach(function(file) {
+                    if (file.parsed) {
+                        select.append(`<option value="${file.filename}">${file.filename} (${file.word_count} words)</option>`);
+                    }
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading documents:', error);
+        }
+    });
+}
+
+// Load graph data from server
+function loadGraphData(documentId = '') {
+    showLoading(true);
+
+    const url = documentId ? `/graph/data?document_id=${encodeURIComponent(documentId)}` : '/graph/data';
+
+    $.ajax({
+        url: url,
+        method: 'GET',
+        success: function(response) {
+            if (response.success) {
+                graphData = response.graph_data;
+                renderGraph(graphData);
+                updateStatistics(graphData);
+                updateFilters(graphData);
+            } else {
+                alert('Error loading graph: ' + (response.error || 'Unknown error'));
+            }
+            showLoading(false);
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading graph data:', error);
+            alert('Failed to load graph data. Check console for details.');
+            showLoading(false);
+        }
+    });
+}
+
+// Show/hide loading overlay
+function showLoading(show) {
+    $('#graphLoading').toggle(show);
+}
+
+// Render graph using D3.js
+function renderGraph(data) {
+    // Clear previous graph
+    d3.select('#graphContainer').selectAll('*').remove();
+
+    if (!data || !data.nodes || !data.links) {
+        $('#graphContainer').html('<div class="text-center p-5 text-muted">No graph data available</div>');
+        return;
+    }
+
+    // Update counts
+    $('#nodeCount').text(data.nodes.length + ' nodes');
+    $('#linkCount').text(data.links.length + ' links');
+
+    // Set up dimensions
+    const container = document.getElementById('graphContainer');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Create SVG
+    svg = d3.select('#graphContainer')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+    // Create zoom behavior
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+            g.attr('transform', event.transform);
+        });
+
+    svg.call(zoom);
+
+    // Create main group
+    const g = svg.append('g');
+
+    // Create arrow marker for directed links
+    svg.append('defs').append('marker')
+        .attr('id', 'arrowhead')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 15)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#999');
+
+    // Prepare data
+    nodes = data.nodes.map(d => ({ ...d }));
+    links = data.links.map(d => ({
+        ...d,
+        source: nodes.find(n => n.id === d.source) || d.source,
+        target: nodes.find(n => n.id === d.target) || d.target
+    }));
+
+    // Create color scales
+    const entityTypes = [...new Set(nodes.map(d => d.type))];
+    nodeColorScale = colorSchemes.categorical.domain(entityTypes);
+
+    const relationshipTypes = [...new Set(links.map(d => d.type))];
+    linkColorScale = colorSchemes.set3.domain(relationshipTypes);
+
+    // Update legend
+    updateLegend(entityTypes, relationshipTypes);
+
+    // Create force simulation
+    simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30))
+        .on('tick', ticked);
+
+    // Create links
+    const link = g.append('g')
+        .attr('class', 'links')
+        .selectAll('line')
+        .data(links)
+        .enter()
+        .append('line')
+        .attr('class', 'link')
+        .attr('stroke', d => linkColorScale(d.type))
+        .attr('marker-end', 'url(#arrowhead)');
+
+    // Create link labels
+    const linkText = g.append('g')
+        .attr('class', 'link-labels')
+        .selectAll('text')
+        .data(links)
+        .enter()
+        .append('text')
+        .attr('class', 'link-label')
+        .text(d => d.type)
+        .attr('dy', -5);
+
+    // Create nodes
+    const node = g.append('g')
+        .attr('class', 'nodes')
+        .selectAll('circle')
+        .data(nodes)
+        .enter()
+        .append('circle')
+        .attr('class', 'node')
+        .attr('r', d => Math.min(20, Math.max(8, 5 + Math.sqrt((d.properties?.degree || 1) * 2))))
+        .attr('fill', d => nodeColorScale(d.type))
+        .call(drag(simulation))
+        .on('click', handleNodeClick)
+        .on('mouseover', handleNodeMouseOver)
+        .on('mouseout', handleNodeMouseOut);
+
+    // Create node labels
+    const nodeText = g.append('g')
+        .attr('class', 'node-labels')
+        .selectAll('text')
+        .data(nodes)
+        .enter()
+        .append('text')
+        .attr('class', 'node-label')
+        .text(d => d.name.length > 15 ? d.name.substring(0, 15) + '...' : d.name)
+        .attr('dy', 4);
+
+    // Tick function
+    function ticked() {
+        link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+
+        linkText
+            .attr('x', d => (d.source.x + d.target.x) / 2)
+            .attr('y', d => (d.source.y + d.target.y) / 2);
+
+        node
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y);
+
+        nodeText
+            .attr('x', d => d.x)
+            .attr('y', d => d.y);
+    }
+
+    // Initial tick to position elements
+    simulation.tick(100);
+}
+
+// Drag behavior
+function drag(simulation) {
+    function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+    }
+
+    function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+    }
+
+    function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+    }
+
+    return d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended);
+}
+
+// Node click handler
+function handleNodeClick(event, d) {
+    // Highlight connected nodes and links
+    const connectedLinks = links.filter(l =>
+        l.source.id === d.id || l.target.id === d.id
+    );
+
+    const connectedNodeIds = new Set();
+    connectedLinks.forEach(l => {
+        if (l.source.id !== d.id) connectedNodeIds.add(l.source.id);
+        if (l.target.id !== d.id) connectedNodeIds.add(l.target.id);
+    });
+
+    // Reset all opacity
+    svg.selectAll('.node').style('opacity', 0.2);
+    svg.selectAll('.link').style('opacity', 0.1);
+    svg.selectAll('.node-label').style('opacity', 0.2);
+    svg.selectAll('.link-label').style('opacity', 0.1);
+
+    // Highlight selected node
+    d3.select(event.currentTarget).style('opacity', 1);
+    svg.selectAll('.node-label').filter(n => n.id === d.id).style('opacity', 1);
+
+    // Highlight connected nodes and links
+    connectedNodeIds.forEach(nodeId => {
+        svg.selectAll('.node').filter(n => n.id === nodeId).style('opacity', 1);
+        svg.selectAll('.node-label').filter(n => n.id === nodeId).style('opacity', 1);
+    });
+
+    connectedLinks.forEach(link => {
+        svg.selectAll('.link').filter(l => l === link).style('opacity', 1);
+        svg.selectAll('.link-label').filter(l => l === link).style('opacity', 1);
+    });
+
+    // Show node details
+    showNodeDetails(d);
+}
+
+// Node mouseover handler
+function handleNodeMouseOver(event, d) {
+    const tooltip = $('#graphTooltip');
+    const tooltipContent = `
+        <strong>${d.name}</strong><br>
+        Type: ${d.type}<br>
+        ${d.source_document ? `Document: ${d.source_document}<br>` : ''}
+        ${d.confidence ? `Confidence: ${(d.confidence * 100).toFixed(1)}%<br>` : ''}
+        <small>Click for details</small>
+    `;
+
+    tooltip.html(tooltipContent)
+        .css('left', (event.pageX + 10) + 'px')
+        .css('top', (event.pageY - 10) + 'px')
+        .show();
+}
+
+// Node mouseout handler
+function handleNodeMouseOut(event, d) {
+    $('#graphTooltip').hide();
+}
+
+// Show node details in a modal or side panel
+function showNodeDetails(node) {
+    // For now, just log to console
+    console.log('Node details:', node);
+    // TODO: Implement detailed view modal
+}
+
+// Update graph statistics
+function updateStatistics(data) {
+    const statsContainer = $('#graphStatistics');
+    statsContainer.empty();
+
+    if (!data.statistics) return;
+
+    const stats = data.statistics;
+
+    const statsHtml = `
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h2 class="display-6">${stats.total_nodes || 0}</h2>
+                    <p class="text-muted mb-0">Total Nodes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h2 class="display-6">${stats.total_links || 0}</h2>
+                    <p class="text-muted mb-0">Total Links</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h2 class="display-6">${Object.keys(stats.entity_types || {}).length}</h2>
+                    <p class="text-muted mb-0">Entity Types</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h2 class="display-6">${Object.keys(stats.relationship_types || {}).length}</h2>
+                    <p class="text-muted mb-0">Relationship Types</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    statsContainer.html(statsHtml);
+}
+
+// Update filter dropdowns
+function updateFilters(data) {
+    if (!data.statistics) return;
+
+    // Update entity type filter
+    const entityTypeFilter = $('#entityTypeFilter');
+    entityTypeFilter.empty();
+
+    Object.keys(data.statistics.entity_types || {}).forEach(type => {
+        entityTypeFilter.append(`<option value="${type}">${type} (${data.statistics.entity_types[type]})</option>`);
+    });
+
+    // Update relationship type filter
+    const relationshipTypeFilter = $('#relationshipTypeFilter');
+    relationshipTypeFilter.empty();
+
+    Object.keys(data.statistics.relationship_types || {}).forEach(type => {
+        relationshipTypeFilter.append(`<option value="${type}">${type} (${data.statistics.relationship_types[type]})</option>`);
+    });
+}
+
+// Update legend
+function updateLegend(entityTypes, relationshipTypes) {
+    const legendItems = $('#legendItems');
+    legendItems.empty();
+
+    // Add entity types
+    entityTypes.forEach(type => {
+        legendItems.append(`
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: ${nodeColorScale(type)};"></span>
+                ${type}
+            </div>
+        `);
+    });
+
+    // Add separator
+    legendItems.append('<div class="legend-item">|</div>');
+
+    // Add relationship types
+    relationshipTypes.forEach(type => {
+        legendItems.append(`
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: ${linkColorScale(type)};"></span>
+                ${type}
+            </div>
+        `);
+    });
+}
+
+// Reset filters
+function resetFilters() {
+    $('#documentSelect').val('');
+    $('#entityTypeFilter').val([]);
+    $('#relationshipTypeFilter').val([]);
+    loadGraphData();
+}
+
+// Export graph
+function exportGraph() {
+    if (!graphData) {
+        alert('No graph data to export');
+        return;
+    }
+
+    // Export as JSON
+    const dataStr = JSON.stringify(graphData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+    const exportFileDefaultName = 'knowledge_graph.json';
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+}
+
+// Initialize tooltip
+function initTooltip() {
+    $('body').append('<div class="tooltip" id="graphTooltip" style="display: none;"></div>');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,10 @@
+This is a test document for the Knowledge Graph QA Demo System.
+
+The system will parse this text and extract entities and relationships.
+
+Entities that should be recognized:
+- Knowledge Graph (concept)
+- QA Demo System (system)
+- User (person/role)
+
+This document is used for testing file upload functionality in Phase 1.

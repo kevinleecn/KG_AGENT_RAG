@@ -1,0 +1,1167 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Documents - KG QA Demo{% endblock %}
+
+{% block head_extra %}
+<!-- D3.js for graph visualization in Knowledge Graph Nodes card -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 左侧主内容 (8列) -->
+    <div class="col-lg-8">
+        <!-- Page Header -->
+        <div class="page-header mb-4">
+            <h1 class="display-5">
+                <i class="fas fa-file-upload text-primary me-2"></i>Upload Documents
+            </h1>
+            <p class="lead">
+                Upload documents to build a knowledge graph. Supported formats:
+                <span class="badge bg-secondary">.txt</span>
+                <span class="badge bg-secondary">.docx</span>
+                <span class="badge bg-secondary">.pdf</span>
+                <span class="badge bg-secondary">.pptx</span>
+            </p>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cloud-upload-alt me-2"></i>Select Files
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- File Drop Zone -->
+                <div class="file-upload-area p-5 text-center border-dashed rounded" id="dropZone">
+                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="mb-2">Drag & drop files here</h5>
+                    <p class="text-muted mb-3">or click to browse</p>
+                    <input type="file" id="fileInput" class="d-none" multiple accept=".txt,.docx,.pdf,.pptx">
+                    <button type="button" class="btn btn-primary" id="browseBtn">
+                        <i class="fas fa-folder-open me-2"></i>Browse Files
+                    </button>
+                    <p class="small text-muted mt-3">
+                        Maximum file size: 16MB per file
+                    </p>
+                </div>
+
+                <!-- Selected Files List -->
+                <div class="mt-4" id="fileListContainer" style="display: none;">
+                    <h6 class="mb-3">Selected Files</h6>
+                    <div class="list-group" id="fileList">
+                        <!-- Files will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Upload Button -->
+                <div class="mt-4 text-end">
+                    <button type="button" class="btn btn-success" id="uploadBtn" disabled>
+                        <i class="fas fa-upload me-2"></i>Upload Files
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card mt-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>How It Works
+                </h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li>Select one or more documents (TXT, DOCX, PDF, PPTX)</li>
+                    <li>Files will be uploaded to the server</li>
+                    <li>In later phases: documents will be parsed and a knowledge graph will be built</li>
+                    <li>You'll be able to ask questions about the document content</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Upload Results -->
+        <div class="mt-4" id="resultsContainer" style="display: none;">
+            <!-- Results will be shown here -->
+        </div>
+
+        <!-- Uploaded Files List -->
+        <div class="card mt-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-alt me-2"></i>Uploaded Files
+                </h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="refreshFilesBtn">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Loading indicator -->
+                <div class="text-center py-3" id="filesLoading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading uploaded files...</p>
+                </div>
+
+                <!-- Empty state -->
+                <div class="text-center py-4" id="filesEmpty" style="display: none;">
+                    <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No files uploaded yet</h5>
+                    <p class="text-muted">Upload some files to see them listed here.</p>
+                </div>
+
+                <!-- Files list -->
+                <div id="filesListContainer" style="display: none;">
+                    <div class="mb-3">
+                        <span class="badge bg-info" id="filesCount">0 files</span>
+                        <span class="badge bg-secondary ms-2" id="totalSize">0 Bytes</span>
+                    </div>
+                    <div class="list-group" id="uploadedFilesList">
+                        <!-- Files will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Knowledge Graph Nodes Card -->
+        <div class="card mt-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-project-diagram me-2"></i>Knowledge Graph Nodes
+                </h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="toggleViewBtn">
+                        <i class="fas fa-table me-1"></i>Table
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleNodesBtn">
+                        <i class="fas fa-eye me-1"></i>Show/Hide
+                    </button>
+                </div>
+            </div>
+            <div class="card-body" id="nodesContainer" style="display: none;">
+                <!-- Loading state -->
+                <div class="text-center py-3" id="nodesLoading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading knowledge graph nodes...</p>
+                </div>
+
+                <!-- Empty state -->
+                <div class="text-center py-4" id="nodesEmpty" style="display: none;">
+                    <i class="fas fa-project-diagram fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted" id="nodesEmptyTitle">No nodes available</h5>
+                    <p class="text-muted" id="nodesEmptyMessage">Select a parsed document to view its knowledge graph nodes.</p>
+                    <div id="nodesEmptyActions" class="mt-3"></div>
+                </div>
+
+                <!-- Table View Container -->
+                <div id="tableViewContainer" style="display: block;">
+                    <div class="mb-3">
+                        <span class="badge bg-info" id="nodesCount">0 nodes</span>
+                        <span class="badge bg-secondary ms-2" id="nodesTypes">0 types</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm" id="nodesTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Confidence</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nodesTableBody">
+                                <!-- Nodes will be added here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Graph View Container -->
+                <div id="graphViewContainer" style="display: none;">
+                    <!-- Graph toolbar -->
+                    <div class="graph-toolbar mb-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary" id="zoomInBtn">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="zoomOutBtn">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="resetZoomBtn">
+                                <i class="fas fa-expand-arrows-alt"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="centerGraphBtn">
+                                <i class="fas fa-crosshairs"></i>
+                            </button>
+                        </div>
+                        <div class="float-end">
+                            <span class="badge bg-info me-2" id="graphNodeCount">0 nodes</span>
+                            <span class="badge bg-secondary" id="graphLinkCount">0 links</span>
+                        </div>
+                    </div>
+
+                    <!-- Graph container -->
+                    <div class="graph-preview-container" id="graphPreviewContainer">
+                        <div class="loading-overlay" id="graphLoadingOverlay">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading graph...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Rendering graph...</p>
+                            </div>
+                        </div>
+                        <div class="tooltip" id="graphTooltip" style="display: none;"></div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="graph-legend mt-2" id="graphLegend">
+                        <small><strong>Legend:</strong></small>
+                        <div id="legendItems" class="d-flex flex-wrap gap-2 mt-1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧聊天窗口 (4列) -->
+    <div class="col-lg-4">
+        <div class="card chat-window shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot me-2"></i>Knowledge Graph Assistant
+                </h5>
+                <div>
+                    <button class="btn btn-sm btn-light" id="clearChatBtn" title="Clear chat history">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-light" id="toggleChatBtn" title="Minimize">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body chat-messages" id="chatMessages">
+                <!-- 初始欢迎消息 -->
+                <div class="message assistant">
+                    <div class="message-header">
+                        <strong>Assistant</strong>
+                        <small class="text-muted">Just now</small>
+                    </div>
+                    <div class="message-content">
+                        Hello! I'm your Knowledge Graph Assistant. You can ask me questions about your uploaded documents.
+                        Try asking about entities, relationships, or specific documents.
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="input-group">
+                    <textarea class="form-control" id="chatInput"
+                              placeholder="Ask about your documents..."
+                              rows="2"></textarea>
+                    <button class="btn btn-primary" id="sendMessageBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> I can answer questions using the knowledge graph from your documents.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+        <!-- Node Details Modal -->
+        <div class="modal fade" id="nodeDetailsModal" tabindex="-1" aria-labelledby="nodeDetailsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="nodeDetailsModalLabel">Node Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Basic Information</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th>Name:</th>
+                                        <td id="nodeDetailName">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Type:</th>
+                                        <td id="nodeDetailType">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Confidence:</th>
+                                        <td id="nodeDetailConfidence">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Source Document:</th>
+                                        <td id="nodeDetailSourceDocument">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Node ID:</th>
+                                        <td id="nodeDetailId" class="text-muted small">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Properties</h6>
+                                <div class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;">
+                                    <pre id="nodeDetailProperties" class="mb-0 small">No properties available</pre>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h6>Connections</h6>
+                            <div class="alert alert-info" id="nodeConnectionsInfo">
+                                Connection information would be shown here in a more advanced visualization.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+{% block scripts_extra %}
+<!-- Graph Preview Component - Add version parameter to avoid cache -->
+<script src="{{ url_for('static', filename='js/graph-preview.js') }}?v=1.1" onload="console.log('graph-preview.js loaded successfully'); window._graphPreviewLoaded = true;" onerror="console.error('Failed to load graph-preview.js'); window._graphPreviewLoaded = false;"></script>
+<script>
+// Debug script to check GraphPreview loading
+console.log('Debug: Checking GraphPreview loading...');
+console.log('D3 loaded:', typeof d3 !== 'undefined');
+console.log('GraphPreview class:', window.GraphPreview ? 'Defined' : 'Undefined');
+console.log('Script load status:', window._graphPreviewLoaded);
+</script>
+
+<script>
+$(document).ready(function() {
+    // Knowledge Graph Nodes functionality
+    let currentDocument = null;
+    let currentNodes = [];
+    let currentGraphData = null;
+    let graphPreviewInstance = null;
+
+    // Configuration
+    const CONFIG = {
+        GRAPH_DATA_API: '/graph/data',
+        MAX_NODES_DISPLAY: 100, // 限制显示的节点数量以提高性能
+        MAX_GRAPH_NODES: 50,    // 图形视图限制更少节点
+        CURRENT_VIEW: 'table'   // 'table' 或 'graph'
+    };
+
+    /**
+     * Wait for D3.js to be loaded
+     */
+    function waitForD3(maxAttempts = 50, interval = 100) {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const checkD3 = () => {
+                attempts++;
+                if (typeof d3 !== 'undefined') {
+                    console.log('D3.js loaded successfully after', attempts, 'attempts');
+                    resolve(d3);
+                } else if (attempts >= maxAttempts) {
+                    reject(new Error('D3.js failed to load after ' + maxAttempts + ' attempts'));
+                } else {
+                    setTimeout(checkD3, interval);
+                }
+            };
+            checkD3();
+        });
+    }
+
+    // Show alert message (similar to function in main.js)
+    function showAlert(type, message) {
+        // Remove existing alerts
+        $('.alert').remove();
+
+        // Create new alert
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${escapeHtml(message)}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+
+        // Insert after main container
+        $('main .container').prepend(alertHtml);
+
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            $(`.alert-${type}`).alert('close');
+        }, 5000);
+    }
+
+    // Toggle nodes container visibility
+    $('#toggleNodesBtn').click(function() {
+        const container = $('#nodesContainer');
+        const isVisible = container.is(':visible');
+        container.toggle(!isVisible);
+        $(this).html(isVisible ?
+            '<i class="fas fa-eye me-1"></i>Show' :
+            '<i class="fas fa-eye-slash me-1"></i>Hide'
+        );
+    });
+
+    // Toggle between table and graph views
+    $('#toggleViewBtn').click(function() {
+        toggleView();
+    });
+
+    // ===== Graph Preview Functions =====
+
+    /**
+     * Toggle between table and graph views
+     */
+    function toggleView() {
+        const $tableView = $('#tableViewContainer');
+        const $graphView = $('#graphViewContainer');
+        const $toggleBtn = $('#toggleViewBtn');
+
+        if (CONFIG.CURRENT_VIEW === 'table') {
+            // Switch to graph view
+            CONFIG.CURRENT_VIEW = 'graph';
+            $tableView.hide();
+            $graphView.show();
+            $toggleBtn.html('<i class="fas fa-table me-1"></i>Table');
+
+            // Render graph preview if data is available
+            if (currentGraphData) {
+                renderGraphPreview(currentGraphData);
+            } else if (currentDocument) {
+                // Load graph data if we have a document but no graph data
+                loadGraphDataForDocument(currentDocument);
+            }
+        } else {
+            // Switch to table view
+            CONFIG.CURRENT_VIEW = 'table';
+            $tableView.show();
+            $graphView.hide();
+            $toggleBtn.html('<i class="fas fa-project-diagram me-1"></i>Graph');
+        }
+    }
+
+    /**
+     * Initialize graph preview instance
+     */
+    function initGraphPreview() {
+        // First check if GraphPreview is available
+        if (!window.GraphPreview) {
+            console.warn('GraphPreview class not loaded yet. Checking script status...');
+
+            // Check if script loaded successfully
+            if (window._graphPreviewLoaded === false) {
+                console.error('graph-preview.js failed to load. Check network tab for 404 error.');
+                return null;
+            }
+
+            // Script might still be loading, wait a bit
+            console.log('Waiting for GraphPreview to become available...');
+
+            // Try to wait for GraphPreview (simple synchronous wait, not ideal but works for now)
+            let attempts = 0;
+            const maxAttempts = 10;
+            while (!window.GraphPreview && attempts < maxAttempts) {
+                // Busy wait (not ideal, but simple)
+                const start = Date.now();
+                while (Date.now() - start < 100) {
+                    // Wait 100ms
+                }
+                attempts++;
+            }
+
+            if (!window.GraphPreview) {
+                console.error('GraphPreview class still not loaded after waiting. Script may have errors.');
+                console.log('D3 available:', typeof d3 !== 'undefined');
+                console.log('Script load status:', window._graphPreviewLoaded);
+                return null;
+            }
+        }
+
+        if (!graphPreviewInstance) {
+            try {
+                // Ensure D3 is available
+                if (typeof d3 === 'undefined') {
+                    console.error('D3.js is not available. GraphPreview requires D3.js v7.');
+                    return null;
+                }
+
+                graphPreviewInstance = new GraphPreview('graphPreviewContainer', {
+                    maxNodes: CONFIG.MAX_GRAPH_NODES,
+                    height: 400,
+                    colorScheme: 'categorical'
+                });
+                console.log('GraphPreview initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize GraphPreview:', error);
+                console.error('Error details:', error.message, error.stack);
+                return null;
+            }
+        }
+
+        return graphPreviewInstance;
+    }
+
+    /**
+     * Render graph preview
+     * @param {object} graphData - Graph data from API
+     */
+    function renderGraphPreview(graphData) {
+        console.log('renderGraphPreview called with graphData:', graphData);
+        console.log('Graph data nodes:', graphData.nodes ? graphData.nodes.length : 0, 'links:', graphData.links ? graphData.links.length : 0);
+
+        const preview = initGraphPreview();
+        if (!preview) {
+            console.error('Cannot render graph: GraphPreview not initialized');
+            return;
+        }
+
+        // Show loading overlay
+        $('#graphLoadingOverlay').show();
+
+        // Render with a small delay to allow DOM updates
+        setTimeout(() => {
+            try {
+                console.log('Calling preview.render with graph data');
+                preview.render(graphData);
+
+                // Update counts
+                const nodeCount = Math.min(graphData.nodes.length, CONFIG.MAX_GRAPH_NODES);
+                const linkCount = graphData.links ? graphData.links.length : 0;
+                console.log('Setting graph counts:', nodeCount, 'nodes,', linkCount, 'links');
+                $('#graphNodeCount').text(`${nodeCount} nodes`);
+                $('#graphLinkCount').text(`${linkCount} links`);
+
+                // Update legend using the graph instance
+                updateGraphLegendFromInstance();
+
+                // Hide loading overlay
+                setTimeout(() => {
+                    $('#graphLoadingOverlay').hide();
+                }, 300);
+
+            } catch (error) {
+                console.error('Error rendering graph:', error);
+                $('#graphLoadingOverlay').hide();
+                // Show error in graph container
+                $('#graphPreviewContainer').html(
+                    '<div class="text-center p-5 text-muted">' +
+                    '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>' +
+                    'Failed to render graph. Check console for details.' +
+                    '</div>'
+                );
+            }
+        }, 50);
+    }
+
+    /**
+     * Update graph legend
+     * @param {object} graphData - Graph data
+     */
+    function updateGraphLegend(graphData) {
+        const legendItems = $('#legendItems');
+        legendItems.empty();
+
+        if (!graphData || !graphData.nodes || !graphData.links) return;
+
+        // Get unique entity types
+        const entityTypes = [...new Set(graphData.nodes.map(n => n.type))];
+        const relationshipTypes = [...new Set(graphData.links.map(l => l.type))];
+
+        // Create color scales for legend
+        const nodeColorScale = d3.scaleOrdinal(d3.schemeCategory10).domain(entityTypes);
+        const linkColorScale = d3.scaleOrdinal(d3.schemeSet3).domain(relationshipTypes);
+
+        // Add entity types
+        entityTypes.forEach(type => {
+            legendItems.append(`
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: ${nodeColorScale(type)};"></span>
+                    <small>${type}</small>
+                </div>
+            `);
+        });
+
+        // Add separator if both entity and relationship types exist
+        if (entityTypes.length > 0 && relationshipTypes.length > 0) {
+            legendItems.append('<div class="legend-item text-muted">|</div>');
+        }
+
+        // Add relationship types
+        relationshipTypes.forEach(type => {
+            legendItems.append(`
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: ${linkColorScale(type)};"></span>
+                    <small>${type}</small>
+                </div>
+            `);
+        });
+    }
+
+    /**
+     * Update graph legend using graph preview instance
+     */
+    function updateGraphLegendFromInstance() {
+        const legendItems = $('#legendItems');
+        legendItems.empty();
+
+        if (!graphPreviewInstance) return;
+
+        try {
+            const entityTypes = graphPreviewInstance.getEntityTypes();
+            const relationshipTypes = graphPreviewInstance.getRelationshipTypes();
+            const nodeColorScale = graphPreviewInstance.getNodeColorScale();
+            const linkColorScale = graphPreviewInstance.getLinkColorScale();
+
+            // Add entity types
+            entityTypes.forEach(type => {
+                legendItems.append(`
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: ${nodeColorScale(type)};"></span>
+                        <small>${type}</small>
+                    </div>
+                `);
+            });
+
+            // Add separator if both entity and relationship types exist
+            if (entityTypes.length > 0 && relationshipTypes.length > 0) {
+                legendItems.append('<div class="legend-item text-muted">|</div>');
+            }
+
+            // Add relationship types
+            relationshipTypes.forEach(type => {
+                legendItems.append(`
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: ${linkColorScale(type)};"></span>
+                        <small>${type}</small>
+                    </div>
+                `);
+            });
+        } catch (error) {
+            console.error('Error updating legend:', error);
+        }
+    }
+
+    /**
+     * Load graph data for a document
+     * @param {string} filename - Document filename
+     */
+    function loadGraphDataForDocument(filename) {
+        if (!filename) return;
+
+        $('#graphLoadingOverlay').show();
+
+        $.ajax({
+            url: `${CONFIG.GRAPH_DATA_API}?document_id=${encodeURIComponent(filename)}`,
+            method: 'GET',
+            success: function(response) {
+                if (response.success && response.graph_data) {
+                    currentGraphData = response.graph_data;
+                    if (CONFIG.CURRENT_VIEW === 'graph') {
+                        renderGraphPreview(currentGraphData);
+                    }
+                } else {
+                    console.warn('No graph data available for document:', filename);
+                }
+                $('#graphLoadingOverlay').hide();
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading graph data:', error);
+                $('#graphLoadingOverlay').hide();
+                // Show error in graph container
+                $('#graphPreviewContainer').html(
+                    '<div class="text-center p-5 text-muted">' +
+                    '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>' +
+                    'Failed to load graph data. Please try again.' +
+                    '</div>'
+                );
+            }
+        });
+    }
+
+    /**
+     * Set up graph control buttons
+     */
+    function setupGraphControls() {
+        $('#zoomInBtn').click(function() {
+            if (graphPreviewInstance) {
+                graphPreviewInstance.zoomIn();
+            }
+        });
+
+        $('#zoomOutBtn').click(function() {
+            if (graphPreviewInstance) {
+                graphPreviewInstance.zoomOut();
+            }
+        });
+
+        $('#resetZoomBtn').click(function() {
+            if (graphPreviewInstance) {
+                graphPreviewInstance.resetZoom();
+            }
+        });
+
+        $('#centerGraphBtn').click(function() {
+            if (graphPreviewInstance) {
+                graphPreviewInstance.centerGraph();
+            }
+        });
+    }
+
+    // Initialize graph controls
+    setupGraphControls();
+
+    // Handle graph node click events
+    $('#graphPreviewContainer').on('graph-node-click', function(event) {
+        const node = event.detail;
+        // Find the node in currentNodes to get full data
+        const fullNode = currentNodes.find(n => n.id === node.id) || node;
+        // Show node details modal
+        showNodeDetailsForGraph(fullNode);
+    });
+
+    // Handle window resize
+    $(window).on('resize', function() {
+        if (graphPreviewInstance && CONFIG.CURRENT_VIEW === 'graph') {
+            graphPreviewInstance.resize();
+        }
+    });
+
+    // ===== End Graph Preview Functions =====
+
+    // Load nodes for a document
+    function loadNodesForDocument(filename) {
+        console.log('loadNodesForDocument called with filename:', filename);
+
+        if (!filename || typeof filename !== 'string' || filename.trim() === '') {
+            showEmptyNodesState('Invalid document name');
+            console.error('Invalid filename provided:', filename);
+            return;
+        }
+
+        // Avoid reloading the same document
+        if (currentDocument === filename && currentNodes.length > 0 && currentGraphData) {
+            console.log('Document already loaded:', filename);
+            return;
+        }
+
+        currentDocument = filename;
+        showNodesLoading();
+
+        // Ensure the nodes container is visible when loading data
+        $('#nodesContainer').show();
+        // Update the toggle button text to "Hide"
+        $('#toggleNodesBtn').html('<i class="fas fa-eye-slash me-1"></i>Hide');
+
+        console.log('Loading graph data from API for document:', filename);
+
+        // Use existing /graph/data endpoint
+        $.ajax({
+            url: `${CONFIG.GRAPH_DATA_API}?document_id=${encodeURIComponent(filename)}`,
+            method: 'GET',
+            success: function(response) {
+                console.log('API response received:', response);
+
+                if (response.success && response.graph_data) {
+                    console.log('Graph data found:', response.graph_data);
+                    console.log('Number of nodes:', response.graph_data.nodes ? response.graph_data.nodes.length : 0);
+                    console.log('Number of links:', response.graph_data.links ? response.graph_data.links.length : 0);
+
+                    currentNodes = response.graph_data.nodes || [];
+                    currentGraphData = response.graph_data;
+
+                    // Render table view
+                    renderNodesTable(currentNodes);
+
+                    // If currently in graph view, render the graph
+                    if (CONFIG.CURRENT_VIEW === 'graph') {
+                        renderGraphPreview(currentGraphData);
+                    }
+                } else {
+                    console.log('No graph data found or API returned failure:', response);
+                    showEmptyNodesState('No graph data found for this document', filename);
+                    currentGraphData = null;
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading graph data:', status, error, xhr.status);
+                console.error('Response text:', xhr.responseText);
+
+                let errorMessage = 'Failed to load graph data. Please try again.';
+                if (xhr.status === 404) {
+                    errorMessage = 'Document not found or no graph data available.';
+                } else if (xhr.status === 403) {
+                    errorMessage = 'Access denied. Please check permissions.';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Server error occurred. Please try again later.';
+                } else if (xhr.status === 0) {
+                    errorMessage = 'Network error. Please check your connection.';
+                }
+
+                showEmptyNodesState(errorMessage, filename);
+                currentGraphData = null;
+            }
+        });
+    }
+
+    // Show loading state
+    function showNodesLoading() {
+        $('#nodesLoading').show();
+        $('#nodesEmpty').hide();
+        $('#tableViewContainer').hide();
+        $('#graphViewContainer').hide();
+    }
+
+    // Show empty state with message
+    function showEmptyNodesState(message, documentName = null) {
+        $('#nodesLoading').hide();
+        $('#nodesEmpty').show();
+        $('#tableViewContainer').hide();
+        $('#graphViewContainer').hide();
+
+        if (message) {
+            $('#nodesEmptyTitle').text(message);
+        }
+
+        // Set default message based on context
+        if (documentName) {
+            $('#nodesEmptyMessage').text(`Document "${documentName}" has no graph data.`);
+        } else {
+            $('#nodesEmptyMessage').text('Select a parsed document to view its knowledge graph nodes.');
+        }
+
+        const $actions = $('#nodesEmptyActions');
+        $actions.empty();
+
+        // If we have a document name and the message suggests no data,
+        // offer to parse the document
+        if (documentName && (message.includes('No graph data') || message.includes('No nodes'))) {
+            $actions.html(`
+                <div class="alert alert-info">
+                    <p class="mb-2"><strong>Document may not be parsed yet.</strong></p>
+                    <p class="small mb-3">Click "Parse Document" to extract knowledge and build the graph.</p>
+                    <button class="btn btn-primary btn-sm" id="parseDocumentBtn">
+                        <i class="fas fa-cogs me-1"></i>Parse Document
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm ms-2" id="checkParseStatusBtn">
+                        <i class="fas fa-sync me-1"></i>Check Status
+                    </button>
+                </div>
+            `);
+
+            // Add event handlers
+            $('#parseDocumentBtn').click(function() {
+                parseDocument(documentName);
+            });
+
+            $('#checkParseStatusBtn').click(function() {
+                loadNodesForDocument(documentName);
+            });
+        }
+
+        currentNodes = [];
+        $('#nodesTableBody').empty();
+        updateNodesCount(0);
+    }
+
+    /**
+     * Parse a document to extract knowledge
+     */
+    function parseDocument(filename) {
+        if (!filename) {
+            console.error('No filename provided for parsing');
+            return;
+        }
+
+        console.log('Parsing and extracting knowledge from document:', filename);
+
+        // Show parsing in progress
+        $('#nodesEmptyActions').html(`
+            <div class="alert alert-warning">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Parsing document "${filename}" and extracting knowledge...
+                <div class="small mt-1">This may take a minute. Extracting entities and relationships.</div>
+            </div>
+        `);
+
+        // Use graph/extract endpoint which parses, extracts knowledge, and builds graph
+        $.ajax({
+            url: `/graph/extract/${encodeURIComponent(filename)}`,
+            method: 'GET',
+            success: function(response) {
+                console.log('Parse and extract response:', response);
+
+                if (response.success) {
+                    const extraction = response.extraction_result || {};
+                    const entityCount = extraction.entity_count || 0;
+                    const relationshipCount = extraction.relationship_count || 0;
+
+                    $('#nodesEmptyActions').html(`
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Document processed successfully!
+                            <div class="small mt-2">
+                                <strong>Extracted:</strong> ${entityCount} entities, ${relationshipCount} relationships
+                            </div>
+                            <div class="small mt-1">Reloading graph data...</div>
+                        </div>
+                    `);
+
+                    // Wait a moment, then reload the nodes
+                    setTimeout(() => {
+                        loadNodesForDocument(filename);
+                    }, 2000);
+                } else {
+                    $('#nodesEmptyActions').html(`
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Failed to process document: ${response.error || 'Unknown error'}
+                        </div>
+                    `);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Parse and extract error:', status, error);
+                $('#nodesEmptyActions').html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error processing document: ${error || 'Network error'}
+                        ${xhr.responseJSON && xhr.responseJSON.error ? `<div class="small mt-1">${xhr.responseJSON.error}</div>` : ''}
+                    </div>
+                `);
+            }
+        });
+    }
+
+    // Render nodes table
+    function renderNodesTable(nodes) {
+        console.log('renderNodesTable called with nodes:', nodes);
+        console.log('Number of nodes to render:', nodes ? nodes.length : 0);
+
+        $('#nodesLoading').hide();
+        $('#nodesEmpty').hide();
+        // Only show table view, graph view will be hidden by default
+        $('#tableViewContainer').show();
+        $('#graphViewContainer').hide();
+
+        const tableBody = $('#nodesTableBody');
+        tableBody.empty();
+
+        if (!nodes || nodes.length === 0) {
+            console.log('No nodes to render, showing empty state');
+            showEmptyNodesState('No nodes available', currentDocument);
+            return;
+        }
+
+        // Apply node limit for performance
+        const displayNodes = nodes.slice(0, CONFIG.MAX_NODES_DISPLAY);
+        const totalNodes = nodes.length;
+        const isLimited = totalNodes > CONFIG.MAX_NODES_DISPLAY;
+
+        // Count unique types
+        const types = new Set();
+
+        // Show warning if nodes are limited
+        if (isLimited) {
+            const warningHtml = `
+                <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Showing ${CONFIG.MAX_NODES_DISPLAY} of ${totalNodes} nodes for performance.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            $('#tableViewContainer').prepend(warningHtml);
+        }
+
+        displayNodes.forEach(function(node, index) {
+            types.add(node.type || 'Unknown');
+
+            const confidencePercent = node.confidence ?
+                Math.round(node.confidence * 100) + '%' : 'N/A';
+
+            const row = `
+                <tr data-node-id="${node.id}" data-node-index="${index}">
+                    <td class="node-name">${escapeHtml(node.name || 'Unknown')}</td>
+                    <td><span class="badge bg-info">${escapeHtml(node.type || 'Unknown')}</span></td>
+                    <td>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${getConfidenceColor(node.confidence)}"
+                                 role="progressbar"
+                                 style="width: ${(node.confidence || 0) * 100}%">
+                            </div>
+                        </div>
+                        <small class="text-muted">${confidencePercent}</small>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-primary view-node-btn"
+                                data-node-index="${index}">
+                            <i class="fas fa-info-circle"></i> Details
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tableBody.append(row);
+        });
+
+        // Update counts
+        updateNodesCount(totalNodes, types.size, isLimited ? CONFIG.MAX_NODES_DISPLAY : undefined);
+
+        // Use event delegation for view buttons
+        // (事件监听器已经在initNodesFunctionality外部设置)
+    }
+
+    // Update node count badges
+    function updateNodesCount(count, typeCount = 0, displayLimit = null) {
+        let countText = count + ' node' + (count !== 1 ? 's' : '');
+        if (displayLimit !== null && displayLimit < count) {
+            countText = `${displayLimit} of ${count} nodes`;
+        }
+        $('#nodesCount').text(countText);
+        if (typeCount > 0) {
+            $('#nodesTypes').text(typeCount + ' type' + (typeCount !== 1 ? 's' : ''));
+        }
+    }
+
+    // Get confidence color class
+    function getConfidenceColor(confidence) {
+        if (confidence >= 0.8) return 'bg-success';
+        if (confidence >= 0.5) return 'bg-warning';
+        return 'bg-danger';
+    }
+
+    // Show node details in modal
+    function showNodeDetails(nodeIndex) {
+        if (nodeIndex < 0 || nodeIndex >= currentNodes.length || !currentNodes[nodeIndex]) {
+            console.error('Invalid node index:', nodeIndex);
+            showAlert('danger', 'Failed to load node details: invalid node index');
+            return;
+        }
+        const node = currentNodes[nodeIndex];
+
+        // Set basic information
+        $('#nodeDetailName').text(node.name || 'Unknown');
+        $('#nodeDetailType').html(`<span class="badge bg-info">${escapeHtml(node.type || 'Unknown')}</span>`);
+        const confidencePercent = node.confidence ? Math.round(node.confidence * 100) : 0;
+        const confidenceColor = getConfidenceColor(node.confidence);
+
+        // 清空并重新构建置信度显示
+        $('#nodeDetailConfidence').empty()
+            .append(document.createTextNode(`${confidencePercent}% `))
+            .append($('<div>', {
+                class: 'progress mt-1',
+                style: 'height: 4px;'
+            }).append($('<div>', {
+                class: `progress-bar ${confidenceColor}`,
+                style: `width: ${(node.confidence || 0) * 100}%`,
+                role: 'progressbar'
+            })));
+        $('#nodeDetailSourceDocument').text(node.source_document || currentDocument || 'Unknown');
+        $('#nodeDetailId').text(node.id || 'N/A');
+
+        // Set properties
+        if (node.properties && Object.keys(node.properties).length > 0) {
+            $('#nodeDetailProperties').text(JSON.stringify(node.properties, null, 2));
+        } else {
+            $('#nodeDetailProperties').text('No properties available');
+        }
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('nodeDetailsModal'));
+        modal.show();
+    }
+
+    // Show node details from graph click
+    function showNodeDetailsForGraph(node) {
+        if (!node) {
+            console.error('No node data provided');
+            return;
+        }
+
+        // Set basic information
+        $('#nodeDetailName').text(node.name || 'Unknown');
+        $('#nodeDetailType').html(`<span class="badge bg-info">${escapeHtml(node.type || 'Unknown')}</span>`);
+        const confidencePercent = node.confidence ? Math.round(node.confidence * 100) : 0;
+        const confidenceColor = getConfidenceColor(node.confidence);
+
+        // Build confidence display
+        $('#nodeDetailConfidence').empty()
+            .append(document.createTextNode(`${confidencePercent}% `))
+            .append($('<div>', {
+                class: 'progress mt-1',
+                style: 'height: 4px;'
+            }).append($('<div>', {
+                class: `progress-bar ${confidenceColor}`,
+                style: `width: ${(node.confidence || 0) * 100}%`,
+                role: 'progressbar'
+            })));
+        $('#nodeDetailSourceDocument').text(node.source_document || currentDocument || 'Unknown');
+        $('#nodeDetailId').text(node.id || 'N/A');
+
+        // Set properties
+        if (node.properties && Object.keys(node.properties).length > 0) {
+            $('#nodeDetailProperties').text(JSON.stringify(node.properties, null, 2));
+        } else {
+            $('#nodeDetailProperties').text('No properties available');
+        }
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('nodeDetailsModal'));
+        modal.show();
+    }
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Initialize nodes functionality
+    function initNodesFunctionality() {
+        // This will be called when a file is selected from the uploaded files list
+        // We need to integrate with existing file selection logic
+        console.log('Knowledge graph nodes functionality initialized');
+
+        // Listen for custom event when a file is selected for node loading
+        $(document).on('fileSelectedForNodes', function(event, filename) {
+            console.log('fileSelectedForNodes event received with filename:', filename);
+            console.log('Current document:', currentDocument);
+            if (filename && filename !== currentDocument) {
+                console.log('Loading nodes for new document:', filename);
+                loadNodesForDocument(filename);
+            } else {
+                console.log('Skipping load - same document or invalid filename');
+            }
+        });
+
+        // Use event delegation for view buttons (dynamic elements)
+        $(document).on('click', '.view-node-btn', function() {
+            const nodeIndex = $(this).data('node-index');
+            showNodeDetails(nodeIndex);
+        });
+    }
+
+    // Cleanup function to prevent memory leaks
+    function cleanupNodesFunctionality() {
+        $(document).off('fileSelectedForNodes');
+        $(document).off('click', '.view-node-btn');
+    }
+
+    // Register cleanup on page unload
+    $(window).on('beforeunload', cleanupNodesFunctionality);
+
+    // Initialize when document is ready
+    initNodesFunctionality();
+});
+</script>
+{% endblock %}
