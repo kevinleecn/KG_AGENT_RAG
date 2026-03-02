@@ -622,7 +622,27 @@ Only return valid JSON, no other text."""
         # Try a simple test call if possible
         try:
             if self.backend == "openai" and self.api_key:
-                return True
+                # Actually test the API key with a minimal call
+                import openai
+                try:
+                    response = self.llm_client.chat.completions.create(
+                        model=self.model,
+                        messages=[{'role': 'user', 'content': 'Hi'}],
+                        max_tokens=5,
+                        temperature=0
+                    )
+                    logger.info("LLM API key validation successful")
+                    return True
+                except openai.AuthenticationError as e:
+                    logger.error(f"LLM API key authentication failed: {e}")
+                    return False
+                except openai.APIError as e:
+                    logger.warning(f"LLM API error during validation: {e}")
+                    # Other API errors might be transient, still consider available
+                    return True
+                except Exception as e:
+                    logger.warning(f"LLM API validation failed: {e}")
+                    return True  # Consider available even if test fails
             elif self.backend == "ollama":
                 # Ollama is local, actually check if service is running
                 import requests

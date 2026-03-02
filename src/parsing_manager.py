@@ -944,7 +944,9 @@ class ParsingManager:
 
             try:
                 # Call extract_knowledge to perform the actual extraction
+                logger.info(f"Calling extract_knowledge for {filename} with method {extraction_method}")
                 extraction_result = self.extract_knowledge(filename, extraction_method=extraction_method)
+                logger.info(f"extract_knowledge returned for {filename}: success={extraction_result.get('success', False)}")
 
                 if extraction_result.get('success', False):
                     entity_count = extraction_result.get('extraction_result', {}).get('entity_count', 0)

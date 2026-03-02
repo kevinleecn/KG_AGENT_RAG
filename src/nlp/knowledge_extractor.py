@@ -38,9 +38,13 @@ class KnowledgeExtractor:
                 else:
                     logger.warning("LLM extraction configured but not available. Check API key configuration.")
                     self.llm_extractor = None
+                    # Don't silently fall back - throw error if LLM was requested but unavailable
+                    raise ValueError("LLM 提取器不可用。请检查 API Key 配置是否正确。")
             except Exception as e:
                 logger.error(f"Failed to initialize LLM extractor: {e}")
                 self.llm_extractor = None
+                # Re-raise the error so the caller knows LLM extraction failed
+                raise
 
         logger.info(f"Initialized KnowledgeExtractor with methods: {self.extraction_methods}")
 
