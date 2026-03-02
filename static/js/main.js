@@ -608,7 +608,7 @@ $(document).ready(function() {
                     <button class="btn btn-sm btn-outline-danger cancel-parsing-btn"
                             data-task-id="${progress.task_id}"
                             onclick="cancelParsingForFileItem('${progress.task_id}', $(this).closest('.uploaded-file-item')); event.stopPropagation();">
-                        <i class="fas fa-times me-1"></i>Cancel
+                        <i class="fas fa-times me-1"></i> 取消
                     </button>
                 </div>
             `;
@@ -785,7 +785,7 @@ $(document).ready(function() {
      * @param {jQuery} $fileItem - File list item jQuery object
      */
     function cancelParsingForFileItem(taskId, $fileItem) {
-        if (!confirm('Are you sure you want to cancel this parsing task?')) {
+        if (!confirm('您确定要取消此解析任务吗？')) {
             return;
         }
 

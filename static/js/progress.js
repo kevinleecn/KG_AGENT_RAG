@@ -584,7 +584,7 @@ function updateListGroupItemProgressUI(fileListItem, progress) {
                 <button class="btn btn-sm btn-outline-danger cancel-parsing-btn"
                         data-task-id="${escapedTaskId}"
                         onclick="cancelParsing('${escapedTaskId}', '${escapeHtml(progress.filename)}'); event.stopPropagation();">
-                    <i class="fas fa-times me-1"></i>Cancel
+                    <i class="fas fa-times me-1"></i> 取消
                 </button>
             </div>
         `;
