@@ -527,17 +527,15 @@ $(document).ready(function() {
                         <i class="fas fa-cogs"></i> Parse
                     </button>
                     <button class="btn btn-sm btn-outline-info show-nodes-btn"
-                            title="Show knowledge graph nodes"
-                            onclick="event.stopPropagation();">
-                        <i class="fas fa-project-diagram"></i>
+                            title="Show knowledge graph nodes">
+                        <i class="fas fa-project-diagram"></i> 查看图谱
                     </button>
                     <a href="${fileUrl}" class="btn btn-sm btn-outline-primary"
                        download="${fileName}" title="Download" onclick="event.stopPropagation();">
                         <i class="fas fa-download"></i>
                     </a>
                     <button class="btn btn-sm btn-outline-danger delete-file-btn"
-                            title="Delete file from server"
-                            onclick="event.stopPropagation();">
+                            title="Delete file from server">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
@@ -1008,12 +1006,17 @@ $(document).ready(function() {
         const filename = $fileItem.data('filename');
         const isParsed = $fileItem.data('parsed');
 
+        console.log('=== Show Nodes Button Clicked ===');
+        console.log('Filename:', filename);
+        console.log('Is Parsed:', isParsed);
+
         if (!isParsed) {
             showAlert('info', 'This file needs to be parsed first to extract knowledge graph nodes.');
             return;
         }
 
         // Trigger custom event for node loading
+        console.log('Triggering fileSelectedForNodes event with filename:', filename);
         $(document).trigger('fileSelectedForNodes', [filename]);
 
         // Add visual feedback
@@ -1022,6 +1025,7 @@ $(document).ready(function() {
 
         // Update current document for chat
         currentDocument = filename;
+        console.log('currentDocument set to:', currentDocument);
     });
 
     // Handle delete file button clicks

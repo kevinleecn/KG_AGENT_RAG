@@ -27,9 +27,13 @@ class GraphPreview {
             throw new Error(`Container with ID "${containerId}" not found`);
         }
 
+        // Get container dimensions - use default if container is hidden (width/height = 0)
+        const containerWidth = this.container.clientWidth;
+        const containerHeight = this.container.clientHeight;
+
         this.options = {
-            width: this.container.clientWidth,
-            height: this.container.clientHeight,
+            width: containerWidth > 0 ? containerWidth : 800,  // Default width if container is hidden
+            height: containerHeight > 0 ? containerHeight : 400, // Default height if container is hidden
             maxNodes: 50,          // Limit nodes for performance
             nodeRadius: 8,
             linkDistance: 100,
@@ -39,6 +43,9 @@ class GraphPreview {
             colorScheme: 'categorical', // 'categorical', 'set3', 'pastel1'
             ...options
         };
+
+        console.log('GraphPreview constructor - container dimensions:', containerWidth, 'x', containerHeight);
+        console.log('GraphPreview constructor - options width/height:', this.options.width, 'x', this.options.height);
 
         // Internal state
         this.svg = null;
@@ -68,15 +75,26 @@ class GraphPreview {
      * Initialize the graph container
      */
     init() {
-        // Clear container
-        d3.select(this.container).selectAll('*').remove();
+        console.log('=== GraphPreview.init ===');
+        console.log('this.container:', this.container);
+        console.log('this.container id:', this.container?.id);
+        console.log('this.options.width:', this.options.width);
+        console.log('this.options.height:', this.options.height);
+
+        // Only remove SVG, keep other elements like overlay and tooltip
+        d3.select(this.container).selectAll('svg').remove();
+        console.log('Removed existing SVGs');
 
         // Create SVG
+        console.log('Creating new SVG...');
         this.svg = d3.select(this.container)
             .append('svg')
             .attr('width', this.options.width)
             .attr('height', this.options.height)
             .attr('class', 'graph-svg');
+
+        console.log('SVG created:', this.svg);
+        console.log('SVG node:', this.svg.node());
 
         // Set up zoom behavior
         this.setupZoom();
@@ -89,6 +107,8 @@ class GraphPreview {
 
         // Create tooltip element
         this.createTooltip();
+
+        console.log('=== GraphPreview.init complete ===');
     }
 
     /**
@@ -134,7 +154,13 @@ class GraphPreview {
      * @param {object} data - Graph data with nodes and links
      */
     render(data) {
+        console.log('=== GraphPreview.render ===');
+        console.log('this.container:', this.container);
+        console.log('this.svg:', this.svg);
+        console.log('this.g:', this.g);
+
         if (!data || !data.nodes || !data.links) {
+            console.warn('No graph data or missing nodes/links');
             this.showEmptyState();
             return;
         }
@@ -145,6 +171,9 @@ class GraphPreview {
             displayNodes.some(n => n.id === link.source) &&
             displayNodes.some(n => n.id === link.target)
         );
+
+        console.log('displayNodes:', displayNodes.length);
+        console.log('displayLinks:', displayLinks.length);
 
         this.nodes = displayNodes.map(d => ({ ...d }));
         this.links = displayLinks.map(d => ({
@@ -157,10 +186,13 @@ class GraphPreview {
         this.createColorScales();
 
         // Clear previous graph
+        console.log('Clearing previous graph from this.g');
         this.g.selectAll('*').remove();
 
         // Create force simulation
+        console.log('Creating force simulation');
         this.createSimulation();
+        console.log('this.simulation after create:', this.simulation);
 
         // Create visual elements
         this.createLinks();
@@ -169,10 +201,13 @@ class GraphPreview {
         this.createNodeLabels();
 
         // Start simulation
+        console.log('Starting simulation with alpha(1).restart()');
         this.simulation.alpha(1).restart();
 
         // Update legend
         this.updateLegend();
+
+        console.log('Graph render complete');
     }
 
     /**

@@ -357,7 +357,7 @@
 
 {% block scripts_extra %}
 <!-- Graph Preview Component - Add version parameter to avoid cache -->
-<script src="{{ url_for('static', filename='js/graph-preview.js') }}?v=1.1" onload="console.log('graph-preview.js loaded successfully'); window._graphPreviewLoaded = true;" onerror="console.error('Failed to load graph-preview.js'); window._graphPreviewLoaded = false;"></script>
+<script src="{{ url_for('static', filename='js/graph-preview.js') }}?v=1.6" onload="console.log('graph-preview.js loaded successfully'); window._graphPreviewLoaded = true;" onerror="console.error('Failed to load graph-preview.js'); window._graphPreviewLoaded = false;"></script>
 <script>
 // Debug script to check GraphPreview loading
 console.log('Debug: Checking GraphPreview loading...');
@@ -478,6 +478,10 @@ $(document).ready(function() {
      * Initialize graph preview instance
      */
     function initGraphPreview() {
+        console.log('=== initGraphPreview ===');
+        console.log('window.GraphPreview:', window.GraphPreview);
+        console.log('graphPreviewInstance:', graphPreviewInstance);
+
         // First check if GraphPreview is available
         if (!window.GraphPreview) {
             console.warn('GraphPreview class not loaded yet. Checking script status...');
@@ -519,12 +523,14 @@ $(document).ready(function() {
                     return null;
                 }
 
+                console.log('Creating new GraphPreview instance...');
                 graphPreviewInstance = new GraphPreview('graphPreviewContainer', {
                     maxNodes: CONFIG.MAX_GRAPH_NODES,
                     height: 400,
                     colorScheme: 'categorical'
                 });
                 console.log('GraphPreview initialized successfully');
+                console.log('graphPreviewInstance:', graphPreviewInstance);
             } catch (error) {
                 console.error('Failed to initialize GraphPreview:', error);
                 console.error('Error details:', error.message, error.stack);
@@ -532,6 +538,7 @@ $(document).ready(function() {
             }
         }
 
+        console.log('Returning graphPreviewInstance:', graphPreviewInstance);
         return graphPreviewInstance;
     }
 
@@ -540,14 +547,25 @@ $(document).ready(function() {
      * @param {object} graphData - Graph data from API
      */
     function renderGraphPreview(graphData) {
-        console.log('renderGraphPreview called with graphData:', graphData);
-        console.log('Graph data nodes:', graphData.nodes ? graphData.nodes.length : 0, 'links:', graphData.links ? graphData.links.length : 0);
+        console.log('=== renderGraphPreview ===');
+        console.log('graphData:', graphData);
+        console.log('graphPreviewInstance before init:', graphPreviewInstance);
+
+        // Ensure graphViewContainer is visible before rendering
+        $('#graphViewContainer').show();
 
         const preview = initGraphPreview();
+        console.log('initGraphPreview returned:', preview);
+        console.log('graphPreviewInstance after init:', graphPreviewInstance);
+
         if (!preview) {
             console.error('Cannot render graph: GraphPreview not initialized');
             return;
         }
+
+        // Resize the graph to ensure correct dimensions
+        preview.resize();
+        console.log('After resize - options width/height:', preview.options.width, '/', preview.options.height);
 
         // Show loading overlay
         $('#graphLoadingOverlay').show();
@@ -556,6 +574,7 @@ $(document).ready(function() {
         setTimeout(() => {
             try {
                 console.log('Calling preview.render with graph data');
+                console.log('Container element:', document.getElementById('graphPreviewContainer'));
                 preview.render(graphData);
 
                 // Update counts
@@ -568,14 +587,20 @@ $(document).ready(function() {
                 // Update legend using the graph instance
                 updateGraphLegendFromInstance();
 
-                // Hide loading overlay
+                // Hide loading overlay - use both methods to ensure it's hidden
                 setTimeout(() => {
                     $('#graphLoadingOverlay').hide();
+                    $('#graphLoadingOverlay').addClass('d-none');
+                    console.log('Loading overlay hidden:', $('#graphLoadingOverlay').css('display'));
+                    console.log('SVG element exists:', document.querySelector('#graphPreviewContainer svg') !== null);
+                    console.log('Graph rendering complete');
                 }, 300);
 
             } catch (error) {
                 console.error('Error rendering graph:', error);
+                console.error('Stack:', error.stack);
                 $('#graphLoadingOverlay').hide();
+                $('#graphLoadingOverlay').addClass('d-none');
                 // Show error in graph container
                 $('#graphPreviewContainer').html(
                     '<div class="text-center p-5 text-muted">' +
@@ -584,7 +609,7 @@ $(document).ready(function() {
                     '</div>'
                 );
             }
-        }, 50);
+        }, 100); // Increased delay to ensure container is visible
     }
 
     /**
@@ -779,7 +804,18 @@ $(document).ready(function() {
         }
 
         currentDocument = filename;
-        showNodesLoading();
+
+        // Show loading state based on current view
+        if (CONFIG.CURRENT_VIEW === 'graph') {
+            // In graph view, show graph loading overlay
+            $('#graphLoadingOverlay').show();
+            $('#nodesLoading').hide();
+        } else {
+            // In table view or default, show standard loading
+            $('#nodesLoading').show();
+        }
+
+        $('#nodesEmpty').hide();
 
         // Ensure the nodes container is visible when loading data
         $('#nodesContainer').show();
@@ -977,12 +1013,21 @@ $(document).ready(function() {
     function renderNodesTable(nodes) {
         console.log('renderNodesTable called with nodes:', nodes);
         console.log('Number of nodes to render:', nodes ? nodes.length : 0);
+        console.log('CONFIG.CURRENT_VIEW:', CONFIG.CURRENT_VIEW);
 
         $('#nodesLoading').hide();
         $('#nodesEmpty').hide();
-        // Only show table view, graph view will be hidden by default
-        $('#tableViewContainer').show();
-        $('#graphViewContainer').hide();
+
+        // Show appropriate view based on CONFIG.CURRENT_VIEW
+        if (CONFIG.CURRENT_VIEW === 'graph') {
+            // In graph view, hide table
+            $('#tableViewContainer').hide();
+            $('#graphViewContainer').show();
+        } else {
+            // In table view, show table
+            $('#tableViewContainer').show();
+            $('#graphViewContainer').hide();
+        }
 
         const tableBody = $('#nodesTableBody');
         tableBody.empty();
@@ -1164,13 +1209,51 @@ $(document).ready(function() {
 
         // Listen for custom event when a file is selected for node loading
         $(document).on('fileSelectedForNodes', function(event, filename) {
-            console.log('fileSelectedForNodes event received with filename:', filename);
-            console.log('Current document:', currentDocument);
+            console.log('=== fileSelectedForNodes Event Received ===');
+            console.log('Filename from event:', filename);
+            console.log('Current document (in index.html):', currentDocument);
+            console.log('currentNodes.length:', currentNodes.length);
+            console.log('currentGraphData:', currentGraphData);
+            console.log('CONFIG.CURRENT_VIEW:', CONFIG.CURRENT_VIEW);
+
             if (filename && filename !== currentDocument) {
-                console.log('Loading nodes for new document:', filename);
+                console.log('>>> Loading nodes for NEW document:', filename);
+
+                // Automatically expand the nodes container
+                $('#nodesContainer').show();
+                $('#toggleNodesBtn').html('<i class="fas fa-eye-slash me-1"></i>Hide');
+
+                // Switch to graph view if not already
+                if (CONFIG.CURRENT_VIEW !== 'graph') {
+                    console.log('>>> Switching to GRAPH view');
+                    CONFIG.CURRENT_VIEW = 'graph';
+                    $('#tableViewContainer').hide();
+                    $('#graphViewContainer').show();
+                    $('#toggleViewBtn').html('<i class="fas fa-table me-1"></i>Table');
+                } else {
+                    console.log('>>> Already in graph view');
+                }
+
+                // Load nodes for document
                 loadNodesForDocument(filename);
             } else {
-                console.log('Skipping load - same document or invalid filename');
+                console.log('>>> Same document or invalid filename, just switching view');
+                // If same document, just show the container and switch to graph view
+                $('#nodesContainer').show();
+                $('#toggleNodesBtn').html('<i class="fas fa-eye-slash me-1"></i>Hide');
+                if (CONFIG.CURRENT_VIEW !== 'graph') {
+                    console.log('>>> Switching to GRAPH view (same doc)');
+                    CONFIG.CURRENT_VIEW = 'graph';
+                    $('#tableViewContainer').hide();
+                    $('#graphViewContainer').show();
+                    $('#toggleViewBtn').html('<i class="fas fa-table me-1"></i>Table');
+                }
+
+                // If we already have graph data, render it
+                if (currentGraphData) {
+                    console.log('>>> Rendering existing graph data');
+                    renderGraphPreview(currentGraphData);
+                }
             }
         });
 
