@@ -1142,9 +1142,9 @@ $(document).ready(function() {
         addMessage('user', message);
         $chatInput.val('');
 
-        // 发送到后端
+        // 发送到后端 - 使用融合问答接口
         $.ajax({
-            url: '/chat/ask',
+            url: '/chat/ask-enhanced',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
