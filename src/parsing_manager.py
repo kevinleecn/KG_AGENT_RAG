@@ -927,13 +927,72 @@ class ParsingManager:
                 'parsed_at': datetime.now().isoformat()
             }
 
+            logger.info(f"Async parsing completed for {filename}")
+
+            # ================================
+            # Step 2: Knowledge Extraction (LLM or spaCy)
+            # ================================
+            logger.info(f"Starting knowledge extraction for {filename} using {extraction_method}")
+
+            # Update progress for knowledge extraction
+            self.progress_manager.update_progress(
+                task_id,
+                current_step=96,
+                step_description="Knowledge extraction",
+                message=f"Extracting knowledge using {extraction_method.upper()}..."
+            )
+
+            try:
+                # Call extract_knowledge to perform the actual extraction
+                extraction_result = self.extract_knowledge(filename, extraction_method=extraction_method)
+
+                if extraction_result.get('success', False):
+                    entity_count = extraction_result.get('extraction_result', {}).get('entity_count', 0)
+                    relation_count = extraction_result.get('extraction_result', {}).get('relationship_count', 0)
+                    logger.info(f"Knowledge extraction successful for {filename}: {entity_count} entities, {relation_count} relations")
+
+                    # Update progress for graph building
+                    self.progress_manager.update_progress(
+                        task_id,
+                        current_step=98,
+                        step_description="Building knowledge graph",
+                        message="Building knowledge graph from extracted triplets..."
+                    )
+
+                    # Build the graph
+                    build_result = self.build_graph_from_extraction(filename)
+
+                    if build_result.get('success', False):
+                        nodes_created = build_result.get('nodes_created', 0)
+                        relationships_created = build_result.get('relationships_created', 0)
+                        logger.info(f"Graph building successful for {filename}: {nodes_created} nodes, {relationships_created} relationships")
+
+                        # Add extraction results to final result_data
+                        result_data['extraction_method'] = extraction_method
+                        result_data['entity_count'] = entity_count
+                        result_data['relationship_count'] = relation_count
+                        result_data['nodes_created'] = nodes_created
+                        result_data['relationships_created'] = relationships_created
+                    else:
+                        logger.warning(f"Graph building failed for {filename}: {build_result.get('error', 'Unknown error')}")
+                        result_data['graph_build_warning'] = build_result.get('error', 'Graph building failed')
+                else:
+                    extraction_error = extraction_result.get('error', 'Unknown extraction error')
+                    logger.warning(f"Knowledge extraction failed for {filename}: {extraction_error}")
+                    result_data['extraction_warning'] = extraction_error
+
+            except Exception as extraction_error:
+                logger.error(f"Error during knowledge extraction for {filename}: {str(extraction_error)}")
+                result_data['extraction_error'] = str(extraction_error)
+
+            # Finalize task completion with all results
             self.progress_manager.complete_task(
                 task_id,
                 result_data,
                 message=f"Successfully parsed {filename} ({text_length} chars, {word_count} words)"
             )
 
-            logger.info(f"Async parsing completed for {filename}")
+            logger.info(f"Full pipeline completed for {filename}")
 
         except Exception as e:
             # Check if task was cancelled before failing
