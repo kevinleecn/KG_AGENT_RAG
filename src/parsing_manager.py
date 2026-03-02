@@ -927,6 +927,11 @@ class ParsingManager:
             logger.info(f"Async parsing completed for {filename}")
 
         except Exception as e:
+            # Check if task was cancelled before failing
+            if self._is_cancelled(task_id):
+                logger.info(f"Task {task_id} was cancelled, skipping error handling for {filename}")
+                return
+
             error_msg = f"Error parsing file {filename}: {str(e)}"
             logger.error(error_msg, exc_info=True)
             self.progress_manager.fail_task(task_id, error_msg)
