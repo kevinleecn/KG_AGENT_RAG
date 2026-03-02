@@ -1033,7 +1033,13 @@ class ParsingManager:
             True if successful, False otherwise
         """
         # Set cancellation event for immediate response
-        self._set_cancel_event(task_id)
+        # Get existing event and set it (don't create a new one!)
+        cancel_event = self._cancel_events.get(task_id)
+        if cancel_event:
+            cancel_event.set()  # Signal cancellation
+            logger.info(f"Set cancellation event for task {task_id}")
+        else:
+            logger.warning(f"No cancellation event found for task {task_id}")
 
         # Update task status
         result = self.progress_manager.cancel_task(
