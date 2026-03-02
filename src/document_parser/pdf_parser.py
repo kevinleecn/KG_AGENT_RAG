@@ -478,6 +478,8 @@ class PdfParser(BaseParser):
 
                 for page_num in range(pages_to_parse):
                     # Check cancellation first (immediate stop)
+                    if page_num % 5 == 0:  # Log every 5 pages to avoid too much logging
+                        logger.debug(f"Parsing page {page_num + 1}/{total_pages}, checking cancellation...")
                     if cancel_check and cancel_check():
                         logger.info(f"Parsing cancelled at page {page_num + 1}/{total_pages}")
                         if progress_callback:
@@ -618,6 +620,8 @@ class PdfParser(BaseParser):
 
                 for page_num in range(pages_to_parse):
                     # Check cancellation first (immediate stop)
+                    if page_num % 5 == 0:  # Log every 5 pages to avoid too much logging
+                        logger.debug(f"Parsing page {page_num + 1}/{total_pages}, checking cancellation...")
                     if cancel_check and cancel_check():
                         logger.info(f"Parsing cancelled at page {page_num + 1}/{total_pages}")
                         if progress_callback:
