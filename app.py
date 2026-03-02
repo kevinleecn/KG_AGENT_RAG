@@ -207,7 +207,9 @@ def list_files():
                     'parsing_error': parsing_state.get('error'),
                     'text_length': parsing_state.get('text_length', 0),
                     'word_count': parsing_state.get('word_count', 0),
-                    'parsing_metadata': parsing_state.get('metadata', {})
+                    'parsing_metadata': parsing_state.get('metadata', {}),
+                    # Extract extraction_method from metadata for easy access
+                    'extraction_method': parsing_state.get('metadata', {}).get('extraction_method', 'spacy')
                 })
 
                 total_size += size
