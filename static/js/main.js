@@ -509,7 +509,7 @@ $(document).ready(function() {
                     </div>
                     <div class="file-details">
                         <div class="file-name">
-                            <a href="${fileUrl}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation();">
+                            <a href="${fileUrl}" target="_blank" class="text-decoration-none text-dark" onclick="event.stopPropagation();">
                                 ${fileName}
                             </a>
                             ${effectivelyParsed ? '<span class="badge bg-success ms-2">Parsed</span>' : ''}

@@ -87,6 +87,14 @@
     color: #000 !important;
 }
 
+.file-name a {
+    color: #000 !important;
+}
+
+.file-name a:hover {
+    color: #333 !important;
+}
+
 .file-size {
     font-size: 0.875rem;
     color: var(--secondary-color);
