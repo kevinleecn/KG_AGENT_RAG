@@ -169,7 +169,7 @@ class FusionKGQAEngine:
         """
         q = question.lower().strip()
 
-        # === LLM_ONLY 类型 - 通用知识/助手相关 ===
+        # === LLM_ONLY 类型 - 通用知识/助手相关/用户明确要求 LLM ===
         llm_only_patterns = [
             # 助手身份
             "你是谁", "你是哪个模型", "你叫什么", "who are you", "what model",
@@ -181,6 +181,11 @@ class FusionKGQAEngine:
             "说明", "介绍一下", "介绍下",
             # 创意/生成任务
             "写一个", "创作", "生成", "translate", "summarize",
+            # === 用户明确要求使用 LLM，不使用知识图谱 ===
+            "不要基于知识图谱", "不要用知识图谱", "不使用知识图谱",
+            "基于 llm", "基于大模型", "用你自己的知识", "用你的知识",
+            "based on your knowledge", "use your own knowledge",
+            "直接用 llm", "直接回答", "不要查图谱", "不要查询图谱",
         ]
 
         for pattern in llm_only_patterns:
