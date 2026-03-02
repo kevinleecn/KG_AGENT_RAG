@@ -482,11 +482,16 @@ class PdfParser(BaseParser):
                         logger.info(f"Parsing cancelled at page {page_num + 1}/{total_pages}")
                         if progress_callback:
                             progress_callback(50, 100, "Cancelled", "Parsing cancelled by user")
+                        # Return partial result with cancelled flag
+                        content = '\n\n'.join(all_text)
+                        metadata['cancelled'] = True
+                        metadata['partial_parse'] = True
                         return {
-                            'success': False,
-                            'content': '',
+                            'success': True,  # Partial success
+                            'content': content,
                             'metadata': metadata,
-                            'error': 'Parsing cancelled by user',
+                            'error': None,
+                            'warning': f'Parsing cancelled by user. Parsed {pages_parsed} of {total_pages} pages.',
                             'cancelled': True
                         }
 
@@ -617,11 +622,16 @@ class PdfParser(BaseParser):
                         logger.info(f"Parsing cancelled at page {page_num + 1}/{total_pages}")
                         if progress_callback:
                             progress_callback(50, 100, "Cancelled", "Parsing cancelled by user")
+                        # Return partial result with cancelled flag
+                        content = '\n\n'.join(all_text)
+                        metadata['cancelled'] = True
+                        metadata['partial_parse'] = True
                         return {
-                            'success': False,
-                            'content': '',
+                            'success': True,  # Partial success
+                            'content': content,
                             'metadata': metadata,
-                            'error': 'Parsing cancelled by user',
+                            'error': None,
+                            'warning': f'Parsing cancelled by user. Parsed {pages_parsed} of {total_pages} pages.',
                             'cancelled': True
                         }
 
