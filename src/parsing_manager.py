@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 class ParsingManager:
     """Manages document parsing state and results"""
 
+    # 全局取消标志存储
+    _cancel_events: Dict[str, threading.Event] = {}
+
     def __init__(self, upload_folder: str, parsed_data_folder: str):
         """
         Initialize ParsingManager.
@@ -50,6 +53,32 @@ class ParsingManager:
         # Progress manager for tracking parsing progress
         progress_data_folder = os.path.join(self.parsed_data_folder, 'progress')
         self.progress_manager = ProgressManager(progress_data_folder)
+
+        # Async parsing thread management
+        self._parse_threads: Dict[str, threading.Thread] = {}
+
+        # Cancellation events for immediate task termination
+        self._cancel_events: Dict[str, threading.Event] = {}
+
+    def _set_cancel_event(self, task_id: str) -> None:
+        """Set cancellation event for a task."""
+        self._cancel_events[task_id] = threading.Event()
+
+    def _clear_cancel_event(self, task_id: str) -> None:
+        """Clear cancellation event for a task."""
+        if task_id in self._cancel_events:
+            del self._cancel_events[task_id]
+
+    def _is_cancelled(self, task_id: str) -> bool:
+        """Check if task has been cancelled."""
+        cancel_event = self._cancel_events.get(task_id)
+        if cancel_event and cancel_event.is_set():
+            return True
+        # Also check progress manager state
+        state = self.progress_manager.get_task_state(task_id)
+        if state and state.status.name == 'CANCELLED':
+            return True
+        return False
 
     def _load_state(self) -> None:
         """Load parsing state from file"""
@@ -733,12 +762,16 @@ class ParsingManager:
             metadata={'file_path': file_path, 'extraction_method': extraction_method}
         )
 
+        # Create cancellation event for this task
+        self._set_cancel_event(task_id)
+
         # Start parsing in background thread
         thread = threading.Thread(
             target=self._parse_file_worker,
             args=(filename, task_id, progress_callback, extraction_method),
             daemon=True
         )
+        self._parse_threads[task_id] = thread
         thread.start()
 
         logger.info(f"Started async parsing for {filename} with task ID: {task_id}, method: {extraction_method}")
@@ -787,7 +820,8 @@ class ParsingManager:
                     file_path,
                     progress_callback=lambda step, total, desc, msg: self._handle_progress_update_with_check(
                         task_id, step, total, desc, msg, progress_callback
-                    )
+                    ),
+                    cancel_check=lambda: self._is_cancelled(task_id)
                 )
             else:
                 # Fall back to regular parsing with simulated progress
@@ -808,7 +842,7 @@ class ParsingManager:
                     # Simulate progress based on page count with cancellation check
                     for page_num in range(page_count):
                         # Check for cancellation before each page
-                        if self._is_task_cancelled(task_id):
+                        if self._is_cancelled(task_id):
                             logger.info(f"Parsing cancelled for {filename} at page {page_num + 1}/{page_count}")
                             return
 
@@ -912,7 +946,7 @@ class ParsingManager:
             external_callback: Optional external callback function
         """
         # Check for cancellation before updating progress
-        if self._is_task_cancelled(task_id):
+        if self._is_cancelled(task_id):
             logger.info(f"Task {task_id} cancelled, stopping progress updates")
             return
 
@@ -962,21 +996,6 @@ class ParsingManager:
             except Exception as e:
                 logger.warning(f"Error in external progress callback: {e}")
 
-    def _is_task_cancelled(self, task_id: str) -> bool:
-        """
-        Check if a task has been cancelled.
-
-        Args:
-            task_id: Task ID to check
-
-        Returns:
-            True if task is cancelled, False otherwise
-        """
-        state = self.progress_manager.get_task_state(task_id)
-        if state and state.status.name == 'CANCELLED':
-            return True
-        return False
-
     def get_parsing_progress(self, task_id: str) -> Optional[Dict[str, Any]]:
         """
         Get parsing progress for a task.
@@ -1003,10 +1022,24 @@ class ParsingManager:
         Returns:
             True if successful, False otherwise
         """
-        return self.progress_manager.cancel_task(
+        # Set cancellation event for immediate response
+        self._set_cancel_event(task_id)
+
+        # Update task status
+        result = self.progress_manager.cancel_task(
             task_id,
             message="Parsing cancelled by user"
         )
+
+        # Wait for thread to finish (with timeout)
+        thread = self._parse_threads.get(task_id)
+        if thread and thread.is_alive():
+            thread.join(timeout=2.0)  # Wait up to 2 seconds
+
+        # Clean up
+        self._clear_cancel_event(task_id)
+
+        return result
 
     def get_all_parsing_tasks(self) -> List[Dict[str, Any]]:
         """

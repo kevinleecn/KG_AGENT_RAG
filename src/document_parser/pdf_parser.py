@@ -5,8 +5,11 @@ Uses PyPDF2 and pdfplumber for text extraction.
 
 import os
 import time
+import logging
 from typing import Tuple, Optional, Callable
 from .base_parser import BaseParser
+
+logger = logging.getLogger(__name__)
 
 
 class PdfParser(BaseParser):
@@ -333,7 +336,8 @@ class PdfParser(BaseParser):
         return True, "Valid PDF file"
 
     def parse_with_progress(self, file_path: str, progress_callback: Optional[Callable] = None,
-                           timeout: int = 60, max_pages: int = 0) -> dict:
+                           timeout: int = 60, max_pages: int = 0,
+                           cancel_check: Optional[Callable] = None) -> dict:
         """
         Parse PDF file with progress updates.
 
@@ -343,6 +347,7 @@ class PdfParser(BaseParser):
                 Signature: callback(step, total, description, message)
             timeout: Maximum parsing time in seconds (default: 60)
             max_pages: Maximum number of pages to parse (0 = all pages, default: 0)
+            cancel_check: Optional callback to check if parsing should be cancelled
 
         Returns:
             Dictionary with parsing results
@@ -366,14 +371,14 @@ class PdfParser(BaseParser):
                 if progress_callback:
                     progress_callback(1, 100, "Starting parsing", "Using pdfplumber for text extraction")
                 return self._parse_with_pdfplumber_with_progress(
-                    file_path, progress_callback, timeout=timeout, max_pages=max_pages
+                    file_path, progress_callback, timeout=timeout, max_pages=max_pages, cancel_check=cancel_check
                 )
             except ImportError:
                 # Fall back to PyPDF2
                 if progress_callback:
                     progress_callback(1, 100, "Starting parsing", "Using PyPDF2 for text extraction (pdfplumber not available)")
                 return self._parse_with_pypdf2_with_progress(
-                    file_path, progress_callback, timeout=timeout, max_pages=max_pages
+                    file_path, progress_callback, timeout=timeout, max_pages=max_pages, cancel_check=cancel_check
                 )
 
         except Exception as e:
@@ -389,7 +394,8 @@ class PdfParser(BaseParser):
 
     def _parse_with_pdfplumber_with_progress(self, file_path: str,
                                            progress_callback: Optional[Callable] = None,
-                                           timeout: int = 60, max_pages: int = 0) -> dict:
+                                           timeout: int = 60, max_pages: int = 0,
+                                           cancel_check: Optional[Callable] = None) -> dict:
         """Parse PDF using pdfplumber library with progress updates
 
         Args:
@@ -397,6 +403,7 @@ class PdfParser(BaseParser):
             progress_callback: Callback function for progress updates
             timeout: Maximum parsing time in seconds (default: 60)
             max_pages: Maximum number of pages to parse (0 = all pages, default: 0)
+            cancel_check: Optional callback to check if parsing should be cancelled
         """
         import pdfplumber
 
@@ -425,6 +432,19 @@ class PdfParser(BaseParser):
                     pages_to_parse = total_pages
 
                 for page_num in range(pages_to_parse):
+                    # Check cancellation first (immediate stop)
+                    if cancel_check and cancel_check():
+                        logger.info(f"Parsing cancelled at page {page_num + 1}/{total_pages}")
+                        if progress_callback:
+                            progress_callback(50, 100, "Cancelled", "Parsing cancelled by user")
+                        return {
+                            'success': False,
+                            'content': '',
+                            'metadata': metadata,
+                            'error': 'Parsing cancelled by user',
+                            'cancelled': True
+                        }
+
                     # Check timeout
                     if time.time() - start_time > timeout:
                         timeout_reached = True
@@ -509,7 +529,8 @@ class PdfParser(BaseParser):
 
     def _parse_with_pypdf2_with_progress(self, file_path: str,
                                         progress_callback: Optional[Callable] = None,
-                                        timeout: int = 60, max_pages: int = 0) -> dict:
+                                        timeout: int = 60, max_pages: int = 0,
+                                        cancel_check: Optional[Callable] = None) -> dict:
         """Parse PDF using PyPDF2 library with progress updates (fallback)
 
         Args:
@@ -517,6 +538,7 @@ class PdfParser(BaseParser):
             progress_callback: Callback function for progress updates
             timeout: Maximum parsing time in seconds (default: 60)
             max_pages: Maximum number of pages to parse (0 = all pages, default: 0)
+            cancel_check: Optional callback to check if parsing should be cancelled
         """
         from PyPDF2 import PdfReader
 
@@ -545,6 +567,19 @@ class PdfParser(BaseParser):
                     pages_to_parse = total_pages
 
                 for page_num in range(pages_to_parse):
+                    # Check cancellation first (immediate stop)
+                    if cancel_check and cancel_check():
+                        logger.info(f"Parsing cancelled at page {page_num + 1}/{total_pages}")
+                        if progress_callback:
+                            progress_callback(50, 100, "Cancelled", "Parsing cancelled by user")
+                        return {
+                            'success': False,
+                            'content': '',
+                            'metadata': metadata,
+                            'error': 'Parsing cancelled by user',
+                            'cancelled': True
+                        }
+
                     # Check timeout
                     if time.time() - start_time > timeout:
                         timeout_reached = True
