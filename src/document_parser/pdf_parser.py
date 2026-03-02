@@ -19,7 +19,7 @@ class PdfParser(BaseParser):
         """Initialize PDF parser"""
         self.supported_extensions = {'.pdf'}
 
-    def parse(self, file_path: str, timeout: int = 60, max_pages: int = 0) -> dict:
+    def parse(self, file_path: str, timeout: int = 60, max_pages: int = 0, cancel_check: Optional[Callable[[], bool]] = None) -> dict:
         """
         Parse PDF file and extract text content.
 
@@ -27,6 +27,7 @@ class PdfParser(BaseParser):
             file_path: Path to the PDF file
             timeout: Maximum parsing time in seconds (default: 60)
             max_pages: Maximum number of pages to parse (0 = all pages, default: 0)
+            cancel_check: Optional callable that returns True if parsing should be cancelled
 
         Returns:
             Dictionary with parsing results
@@ -45,10 +46,10 @@ class PdfParser(BaseParser):
             # Try pdfplumber first (better text extraction)
             try:
                 import pdfplumber
-                return self._parse_with_pdfplumber(file_path, timeout=timeout, max_pages=max_pages)
+                return self._parse_with_pdfplumber(file_path, timeout=timeout, max_pages=max_pages, cancel_check=cancel_check)
             except ImportError:
                 # Fall back to PyPDF2
-                return self._parse_with_pypdf2(file_path, timeout=timeout, max_pages=max_pages)
+                return self._parse_with_pypdf2(file_path, timeout=timeout, max_pages=max_pages, cancel_check=cancel_check)
 
         except Exception as e:
             return {
@@ -58,13 +59,14 @@ class PdfParser(BaseParser):
                 'error': f"Error parsing PDF file: {str(e)}"
             }
 
-    def _parse_with_pdfplumber(self, file_path: str, timeout: int = 60, max_pages: int = 0) -> dict:
+    def _parse_with_pdfplumber(self, file_path: str, timeout: int = 60, max_pages: int = 0, cancel_check: Optional[Callable[[], bool]] = None) -> dict:
         """Parse PDF using pdfplumber library
 
         Args:
             file_path: Path to PDF file
             timeout: Maximum parsing time in seconds (default: 60)
             max_pages: Maximum number of pages to parse (0 = all pages, default: 0)
+            cancel_check: Optional callable that returns True if parsing should be cancelled
         """
         import pdfplumber
         import time
@@ -74,6 +76,7 @@ class PdfParser(BaseParser):
         start_time = time.time()
         pages_parsed = 0
         timeout_reached = False
+        cancelled = False
 
         try:
             with pdfplumber.open(file_path) as pdf:
@@ -89,6 +92,12 @@ class PdfParser(BaseParser):
                     pages_to_parse = total_pages
 
                 for page_num in range(pages_to_parse):
+                    # Check cancellation first (for immediate response)
+                    if cancel_check and cancel_check():
+                        cancelled = True
+                        logger.info(f"PDF parsing cancelled at page {page_num + 1}/{total_pages}")
+                        break
+
                     # Check timeout
                     if time.time() - start_time > timeout:
                         timeout_reached = True
@@ -126,6 +135,20 @@ class PdfParser(BaseParser):
                 'error': f"Error opening PDF with pdfplumber: {str(e)}"
             }
 
+        # Handle cancellation - return partial result
+        if cancelled:
+            content = '\n\n'.join(all_text)
+            metadata['cancelled'] = True
+            metadata['partial_parse'] = True
+            result = {
+                'success': True,  # Partial success
+                'content': content,
+                'metadata': metadata,
+                'error': None,
+                'warning': f'Parsing cancelled by user. Parsed {pages_parsed} of {total_pages} pages.'
+            }
+            return result
+
         content = '\n\n'.join(all_text)
 
         # Check if we got any content
@@ -150,13 +173,14 @@ class PdfParser(BaseParser):
 
         return result
 
-    def _parse_with_pypdf2(self, file_path: str, timeout: int = 60, max_pages: int = 0) -> dict:
+    def _parse_with_pypdf2(self, file_path: str, timeout: int = 60, max_pages: int = 0, cancel_check: Optional[Callable[[], bool]] = None) -> dict:
         """Parse PDF using PyPDF2 library (fallback)
 
         Args:
             file_path: Path to PDF file
             timeout: Maximum parsing time in seconds (default: 60)
             max_pages: Maximum number of pages to parse (0 = all pages, default: 0)
+            cancel_check: Optional callable that returns True if parsing should be cancelled
         """
         from PyPDF2 import PdfReader
         import time
@@ -166,6 +190,7 @@ class PdfParser(BaseParser):
         start_time = time.time()
         pages_parsed = 0
         timeout_reached = False
+        cancelled = False
 
         try:
             with open(file_path, 'rb') as file:
@@ -182,6 +207,12 @@ class PdfParser(BaseParser):
                     pages_to_parse = total_pages
 
                 for page_num in range(pages_to_parse):
+                    # Check cancellation first (for immediate response)
+                    if cancel_check and cancel_check():
+                        cancelled = True
+                        logger.info(f"PDF parsing cancelled at page {page_num + 1}/{total_pages}")
+                        break
+
                     # Check timeout
                     if time.time() - start_time > timeout:
                         timeout_reached = True
@@ -218,6 +249,20 @@ class PdfParser(BaseParser):
                 'metadata': metadata,
                 'error': f"Error opening PDF with PyPDF2: {str(e)}"
             }
+
+        # Handle cancellation - return partial result
+        if cancelled:
+            content = '\n\n'.join(all_text)
+            metadata['cancelled'] = True
+            metadata['partial_parse'] = True
+            result = {
+                'success': True,  # Partial success
+                'content': content,
+                'metadata': metadata,
+                'error': None,
+                'warning': f'Parsing cancelled by user. Parsed {pages_parsed} of {total_pages} pages.'
+            }
+            return result
 
         content = '\n\n'.join(all_text)
 

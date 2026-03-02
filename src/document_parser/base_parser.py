@@ -5,18 +5,20 @@ Defines the interface that all concrete parsers must implement.
 
 from abc import ABC, abstractmethod
 import os
+from typing import Callable, Optional
 
 
 class BaseParser(ABC):
     """Abstract base class for all document parsers"""
 
     @abstractmethod
-    def parse(self, file_path: str) -> dict:
+    def parse(self, file_path: str, **kwargs) -> dict:
         """
         Parse the document and extract text content.
 
         Args:
             file_path: Path to the document file
+            **kwargs: Additional arguments (e.g., cancel_check, timeout, max_pages)
 
         Returns:
             Dictionary with:
@@ -97,3 +99,27 @@ class BaseParser(ABC):
             return False, f"File is not readable: {file_path}"
 
         return True, "File exists and is readable"
+
+    def parse_with_progress(
+        self,
+        file_path: str,
+        progress_callback: Callable[[int, int, str, str], None],
+        cancel_check: Optional[Callable[[], bool]] = None,
+        **kwargs
+    ) -> dict:
+        """
+        Parse document with progress updates and cancellation support.
+
+        Default implementation calls parse() directly. Subclasses should override
+        to provide granular progress updates and cancellation checking.
+
+        Args:
+            file_path: Path to the document file
+            progress_callback: Callback function (step, total, description, message)
+            cancel_check: Optional callable that returns True if cancelled
+            **kwargs: Additional arguments
+
+        Returns:
+            Dictionary with parsing results
+        """
+        return self.parse(file_path, cancel_check=cancel_check, **kwargs)
