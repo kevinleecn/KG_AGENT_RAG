@@ -1040,6 +1040,7 @@ $(document).ready(function() {
 
         // Disable button and show loading state
         const $button = $(this);
+        const originalHtml = $button.html();
         $button.prop('disabled', true);
         $button.html('<i class="fas fa-spinner fa-spin"></i>');
 
@@ -1049,28 +1050,38 @@ $(document).ready(function() {
             type: 'DELETE',
             contentType: 'application/json',
             success: function(response) {
-                console.log('Delete success:', response);
+                console.log('Delete response:', response);
                 if (response.success) {
-                    // Remove file item from list with animation
-                    $fileItem.addClass('fade');
-                    $fileItem.css('opacity', '0');
-                    $fileItem.css('transition', 'opacity 0.3s ease');
+                    // Immediately remove file item with animation
+                    console.log('Removing file item from DOM:', filename);
+                    $fileItem.css({
+                        'transition': 'all 0.3s ease',
+                        'opacity': '0',
+                        'transform': 'translateX(-100%)'
+                    });
 
                     setTimeout(() => {
                         $fileItem.remove();
+                        console.log('File item removed from DOM');
 
-                        // Refresh file list to update counts
-                        loadUploadedFiles();
+                        // Update file count
+                        const $filesCount = $('#filesCount');
+                        const currentCount = parseInt($filesCount.text().match(/\d+/)?.[0] || '0');
+                        if (currentCount > 0) {
+                            $filesCount.text(`${currentCount - 1} file${currentCount - 1 !== 1 ? 's' : ''}`);
+                        }
 
                         showAlert('success', `File "${filename}" deleted successfully.`);
                     }, 300);
                 } else {
+                    console.log('Delete failed:', response.error);
                     showAlert('danger', `Failed to delete "${filename}": ${response.error || 'Unknown error'}`);
                     $button.prop('disabled', false);
-                    $button.html('<i class="fas fa-trash-alt"></i>');
+                    $button.html(originalHtml);
                 }
             },
-            error: function(xhr) {
+            error: function(xhr, status, error) {
+                console.error('Delete error:', status, error, xhr.responseText);
                 let errorMessage = 'Failed to delete file. Please try again.';
                 try {
                     const response = JSON.parse(xhr.responseText);
@@ -1080,7 +1091,10 @@ $(document).ready(function() {
                 }
                 showAlert('danger', errorMessage);
                 $button.prop('disabled', false);
-                $button.html('<i class="fas fa-trash-alt"></i>');
+                $button.html(originalHtml);
+            },
+            complete: function() {
+                console.log('Delete request completed');
             }
         });
     });
