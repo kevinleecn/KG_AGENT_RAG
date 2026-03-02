@@ -1173,7 +1173,7 @@ $(document).ready(function() {
         const messageHtml = `
             <div class="message ${role}">
                 <div class="message-header">
-                    <strong>${role === 'user' ? 'You' : 'Assistant'}</strong>
+                    <strong>${role === 'user' ? '你' : '助手'}</strong>
                     <small class="text-muted">${timestamp}</small>
                 </div>
                 <div class="message-content">${escapeHtml(content)}</div>
@@ -1184,15 +1184,15 @@ $(document).ready(function() {
     }
 
     function clearChatHistory() {
-        if (confirm('Clear all chat history?')) {
+        if (confirm('清除所有聊天记录？')) {
             $chatMessages.html(`
                 <div class="message assistant">
                     <div class="message-header">
-                        <strong>Assistant</strong>
-                        <small class="text-muted">Just now</small>
+                        <strong>助手</strong>
+                        <small class="text-muted">刚刚</small>
                     </div>
                     <div class="message-content">
-                        Chat history cleared. How can I help you?
+                        聊天记录已清除。有什么可以帮您？
                     </div>
                 </div>
             `);
