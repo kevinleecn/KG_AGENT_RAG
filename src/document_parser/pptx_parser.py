@@ -4,7 +4,7 @@ Uses python-pptx library for text extraction.
 """
 
 import os
-from typing import Tuple
+from typing import Tuple, Optional, Callable
 from .base_parser import BaseParser
 
 
@@ -15,12 +15,13 @@ class PptxParser(BaseParser):
         """Initialize PPTX parser"""
         self.supported_extensions = {'.pptx'}
 
-    def parse(self, file_path: str) -> dict:
+    def parse(self, file_path: str, cancel_check: Optional[Callable[[], bool]] = None) -> dict:
         """
         Parse PPTX file and extract text content.
 
         Args:
             file_path: Path to the PPTX file
+            cancel_check: Optional callable that returns True if operation should be cancelled
 
         Returns:
             Dictionary with parsing results
@@ -42,9 +43,19 @@ class PptxParser(BaseParser):
             # Load presentation
             prs = Presentation(file_path)
 
-            # Extract text from all slides
+            # Extract text from all slides with cancellation checks
             slide_texts = []
             for slide_num, slide in enumerate(prs.slides, 1):
+                # Check cancellation before processing each slide
+                if cancel_check and cancel_check():
+                    return {
+                        'success': True,
+                        'content': '\n\n'.join(slide_texts),
+                        'metadata': {'file_path': file_path, 'cancelled': True},
+                        'error': None,
+                        'cancelled': True
+                    }
+
                 slide_content = []
 
                 # Extract text from shapes

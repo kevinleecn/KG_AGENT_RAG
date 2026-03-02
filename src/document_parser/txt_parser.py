@@ -5,7 +5,7 @@ Handles various encodings and provides text extraction.
 
 import os
 import chardet
-from typing import Tuple
+from typing import Tuple, Optional, Callable
 from .base_parser import BaseParser
 
 
@@ -16,12 +16,13 @@ class TxtParser(BaseParser):
         """Initialize TXT parser"""
         self.supported_extensions = {'.txt'}
 
-    def parse(self, file_path: str) -> dict:
+    def parse(self, file_path: str, cancel_check: Optional[Callable[[], bool]] = None) -> dict:
         """
         Parse TXT file and extract text content.
 
         Args:
             file_path: Path to the TXT file
+            cancel_check: Optional callable that returns True if operation should be cancelled
 
         Returns:
             Dictionary with parsing results
@@ -37,10 +38,30 @@ class TxtParser(BaseParser):
             }
 
         try:
+            # Check cancellation before reading
+            if cancel_check and cancel_check():
+                return {
+                    'success': True,
+                    'content': '',
+                    'metadata': {'file_path': file_path, 'cancelled': True},
+                    'error': None,
+                    'cancelled': True
+                }
+
             # Detect encoding and read file
             encoding = self._detect_encoding(file_path)
             with open(file_path, 'r', encoding=encoding, errors='replace') as f:
                 content = f.read()
+
+            # Check cancellation after reading
+            if cancel_check and cancel_check():
+                return {
+                    'success': True,
+                    'content': content,
+                    'metadata': {'file_path': file_path, 'cancelled': True},
+                    'error': None,
+                    'cancelled': True
+                }
 
             # Get metadata
             metadata = self.get_metadata(file_path)

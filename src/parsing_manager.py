@@ -469,13 +469,15 @@ class ParsingManager:
             self._triplet_extractor = TripletExtractor()
         return self._triplet_extractor
 
-    def extract_knowledge(self, filename: str, extraction_method: str = 'spacy') -> Dict[str, Any]:
+    def extract_knowledge(self, filename: str, extraction_method: str = 'spacy',
+                         progress_callback: Optional[Callable[[int, str, str], None]] = None) -> Dict[str, Any]:
         """
         Extract knowledge from parsed text of a file.
 
         Args:
             filename: Name of the file
             extraction_method: Knowledge extraction method ('spacy' or 'llm')
+            progress_callback: Optional callback for progress updates (step, description, message)
 
         Returns:
             Dictionary with knowledge extraction results
@@ -507,13 +509,20 @@ class ParsingManager:
             use_llm = (extraction_method == 'llm')
 
             # Create extractor with selected method
+            if progress_callback:
+                progress_callback(33, "Initializing LLM extractor", "Loading extraction models...")
             knowledge_extractor = KnowledgeExtractor(spacy_model=spacy_model, use_llm=use_llm)
 
             # Extract knowledge using NLP
+            if progress_callback:
+                progress_callback(50, "Extracting entities and relationships", "Calling LLM API for knowledge extraction...")
             extraction_result = knowledge_extractor.extract_from_text(
                 text=parsed_text,
                 document_id=filename
             )
+
+            if progress_callback:
+                progress_callback(80, "Processing extraction results", "Converting to triplets...")
 
             # Convert to triplets for graph building
             triplets = self.triplet_extractor.knowledge_extractor_result_to_triplets(
@@ -525,6 +534,9 @@ class ParsingManager:
                 triplets=triplets,
                 source_document=filename
             )
+
+            if progress_callback:
+                progress_callback(90, "Saving extraction results", "Writing extraction data to file...")
 
             # Save extraction results
             extraction_path = self.get_knowledge_extraction_path(filename)
@@ -556,6 +568,9 @@ class ParsingManager:
                        f"{len(extraction_result.get('entities', []))} entities, "
                        f"{len(extraction_result.get('relationships', []))} relationships, "
                        f"{len(graph_triplets)} triplets")
+
+            if progress_callback:
+                progress_callback(100, "Knowledge extraction completed", f"Extracted {len(extraction_result.get('entities', []))} entities and {len(extraction_result.get('relationships', []))} relationships")
 
             return {
                 'success': True,
@@ -939,19 +954,52 @@ class ParsingManager:
                 task_id,
                 current_step=96,
                 step_description="Knowledge extraction",
-                message=f"Extracting knowledge using {extraction_method.upper()}..."
+                message=f"Extracting knowledge using {extraction_method.upper()}... (This may take 1-2 minutes)"
             )
 
             try:
                 # Call extract_knowledge to perform the actual extraction
                 logger.info(f"Calling extract_knowledge for {filename} with method {extraction_method}")
-                extraction_result = self.extract_knowledge(filename, extraction_method=extraction_method)
+
+                # Create progress callback for knowledge extraction
+                def extraction_progress_callback(step_percent, description, message):
+                    """Update progress during knowledge extraction"""
+                    # Map extraction progress (0-100%) to overall progress (96-97%)
+                    # Use intermediate steps: 33% -> 96, 50% -> 96, 80% -> 97, 100% -> 97
+                    if step_percent < 50:
+                        overall_step = 96
+                    elif step_percent < 80:
+                        overall_step = 96
+                    else:
+                        overall_step = 97
+                    self.progress_manager.update_progress(
+                        task_id,
+                        current_step=overall_step,
+                        step_description=description,
+                        message=message
+                    )
+                    logger.info(f"Extraction progress: {step_percent}% - {description}: {message}")
+
+                extraction_result = self.extract_knowledge(
+                    filename,
+                    extraction_method=extraction_method,
+                    progress_callback=extraction_progress_callback
+                )
                 logger.info(f"extract_knowledge returned for {filename}: success={extraction_result.get('success', False)}")
 
                 if extraction_result.get('success', False):
-                    entity_count = extraction_result.get('extraction_result', {}).get('entity_count', 0)
-                    relation_count = extraction_result.get('extraction_result', {}).get('relationship_count', 0)
+                    # Get entity/relation counts from the top-level fields
+                    entity_count = extraction_result.get('entity_count', 0)
+                    relation_count = extraction_result.get('relationship_count', 0)
                     logger.info(f"Knowledge extraction successful for {filename}: {entity_count} entities, {relation_count} relations")
+
+                    # Update progress to 97% after successful extraction
+                    self.progress_manager.update_progress(
+                        task_id,
+                        current_step=97,
+                        step_description="Knowledge extraction completed",
+                        message=f"Extracted {entity_count} entities and {relation_count} relationships"
+                    )
 
                     # Update progress for graph building
                     self.progress_manager.update_progress(

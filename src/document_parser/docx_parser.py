@@ -4,7 +4,7 @@ Uses python-docx library for text extraction.
 """
 
 import os
-from typing import Tuple
+from typing import Tuple, Optional, Callable
 from .base_parser import BaseParser
 
 
@@ -15,12 +15,13 @@ class DocxParser(BaseParser):
         """Initialize DOCX parser"""
         self.supported_extensions = {'.docx'}
 
-    def parse(self, file_path: str) -> dict:
+    def parse(self, file_path: str, cancel_check: Optional[Callable[[], bool]] = None) -> dict:
         """
         Parse DOCX file and extract text content.
 
         Args:
             file_path: Path to the DOCX file
+            cancel_check: Optional callable that returns True if operation should be cancelled
 
         Returns:
             Dictionary with parsing results
@@ -42,9 +43,19 @@ class DocxParser(BaseParser):
             # Load and parse document
             doc = Document(file_path)
 
-            # Extract text from all paragraphs
+            # Extract text from all paragraphs with cancellation checks
             paragraphs = []
             for paragraph in doc.paragraphs:
+                # Check cancellation before processing each paragraph
+                if cancel_check and cancel_check():
+                    return {
+                        'success': True,
+                        'content': '\n'.join(paragraphs),
+                        'metadata': {'file_path': file_path, 'cancelled': True},
+                        'error': None,
+                        'cancelled': True
+                    }
+
                 if paragraph.text.strip():  # Skip empty paragraphs
                     paragraphs.append(paragraph.text)
 
