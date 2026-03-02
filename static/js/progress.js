@@ -525,7 +525,7 @@ function updateFileProgressUI(filename, progress) {
         if (!actionsCell.querySelector('.cancel-parsing-btn')) {
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'btn btn-sm btn-outline-danger cancel-parsing-btn';
-            cancelBtn.innerHTML = '<i class="fas fa-times me-1"></i>Cancel';
+            cancelBtn.innerHTML = '<i class="fas fa-times me-1"></i> 取消';
             cancelBtn.onclick = function() {
                 cancelParsing(progress.task_id, filename);
             };

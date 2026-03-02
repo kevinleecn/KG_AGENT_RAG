@@ -523,8 +523,8 @@ $(document).ready(function() {
                 </div>
                 <div class="file-actions">
                     <button class="btn btn-sm btn-outline-warning parse-file-btn"
-                            title="Parse document to extract knowledge (can re-parse anytime)">
-                        <i class="fas fa-cogs"></i> Parse
+                            title="解析文档以提取知识（可以随时重新解析）">
+                        <i class="fas fa-cogs"></i> 解析文档
                     </button>
                     <button class="btn btn-sm btn-outline-info show-nodes-btn"
                             title="Show knowledge graph nodes">

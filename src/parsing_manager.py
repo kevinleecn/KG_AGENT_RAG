@@ -782,10 +782,10 @@ class ParsingManager:
 
             # Check if parser supports progress callback
             if hasattr(parser, 'parse_with_progress'):
-                # Use progress-aware parsing
+                # Use progress-aware parsing with cancellation check
                 result = parser.parse_with_progress(
                     file_path,
-                    progress_callback=lambda step, total, desc, msg: self._handle_progress_update(
+                    progress_callback=lambda step, total, desc, msg: self._handle_progress_update_with_check(
                         task_id, step, total, desc, msg, progress_callback
                     )
                 )
@@ -805,8 +805,13 @@ class ParsingManager:
                     metadata = result.get('metadata', {})
                     page_count = metadata.get('page_count', 1)
 
-                    # Simulate progress based on page count
+                    # Simulate progress based on page count with cancellation check
                     for page_num in range(page_count):
+                        # Check for cancellation before each page
+                        if self._is_task_cancelled(task_id):
+                            logger.info(f"Parsing cancelled for {filename} at page {page_num + 1}/{page_count}")
+                            return
+
                         progress = 10 + int((page_num + 1) * 80 / page_count)
                         self.progress_manager.update_progress(
                             task_id,
@@ -831,6 +836,11 @@ class ParsingManager:
                 step_description="Parsing completed",
                 message=f"Text extraction completed for {filename}"
             )
+
+            # Check if task was cancelled before saving results
+            if self._is_task_cancelled(task_id):
+                logger.info(f"Task {task_id} cancelled after parsing, skipping save for {filename}")
+                return
 
             # Save parsed text
             parsed_text = result.get('content', '')
@@ -887,6 +897,41 @@ class ParsingManager:
             logger.error(error_msg, exc_info=True)
             self.progress_manager.fail_task(task_id, error_msg)
 
+    def _handle_progress_update_with_check(self, task_id: str, step: int, total: int,
+                               description: str, message: str,
+                               external_callback: Optional[Callable] = None) -> None:
+        """
+        Handle progress update from parser with cancellation check.
+
+        Args:
+            task_id: Progress task ID
+            step: Current step number
+            total: Total steps
+            description: Step description
+            message: Progress message
+            external_callback: Optional external callback function
+        """
+        # Check for cancellation before updating progress
+        if self._is_task_cancelled(task_id):
+            logger.info(f"Task {task_id} cancelled, stopping progress updates")
+            return
+
+        # Update progress manager
+        self.progress_manager.update_progress(
+            task_id,
+            current_step=step,
+            step_description=description,
+            message=message,
+            metadata_updates={'total_steps': total} if total > 0 else None
+        )
+
+        # Call external callback if provided
+        if external_callback:
+            try:
+                external_callback(step, total, description, message)
+            except Exception as e:
+                logger.warning(f"Error in external progress callback: {e}")
+
     def _handle_progress_update(self, task_id: str, step: int, total: int,
                                description: str, message: str,
                                external_callback: Optional[Callable] = None) -> None:
@@ -916,6 +961,21 @@ class ParsingManager:
                 external_callback(step, total, description, message)
             except Exception as e:
                 logger.warning(f"Error in external progress callback: {e}")
+
+    def _is_task_cancelled(self, task_id: str) -> bool:
+        """
+        Check if a task has been cancelled.
+
+        Args:
+            task_id: Task ID to check
+
+        Returns:
+            True if task is cancelled, False otherwise
+        """
+        state = self.progress_manager.get_task_state(task_id)
+        if state and state.status.name == 'CANCELLED':
+            return True
+        return False
 
     def get_parsing_progress(self, task_id: str) -> Optional[Dict[str, Any]]:
         """
