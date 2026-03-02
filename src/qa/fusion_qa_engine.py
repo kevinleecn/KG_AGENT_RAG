@@ -135,6 +135,7 @@ class FusionKGQAEngine:
         llm_only_patterns = [
             # 助手身份
             "你是谁", "你是哪个模型", "你叫什么", "who are you", "what model",
+            "你是哪个大模型", "什么模型", "哪个模型",
             # 能力询问
             "你能做什么", "你有什么功能", "help me", "capabilities",
             # 通用知识
