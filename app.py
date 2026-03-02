@@ -541,7 +541,9 @@ def get_all_progress():
 def cancel_progress(task_id):
     """Cancel a parsing task"""
     try:
+        logger.info(f"Cancel request received for task {task_id}")
         success = parsing_manager.cancel_parsing(task_id)
+        logger.info(f"Cancel result for task {task_id}: {success}")
 
         if not success:
             return jsonify({
