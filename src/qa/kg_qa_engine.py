@@ -45,12 +45,12 @@ class KGQAEngine:
 
             # 3. 如果有来源信息，添加到答案中
             if sources and len(sources) > 0:
-                source_text = "\n\nSources: "
+                source_text = "\n\n来源："
                 source_list = []
                 for i, source in enumerate(sources[:3]):  # 最多显示3个来源
-                    doc_name = source.get('document', 'Unknown document')
+                    doc_name = source.get('document', '未知文档')
                     confidence = source.get('confidence', 0)
-                    source_list.append(f"{doc_name} (confidence: {confidence:.1f})")
+                    source_list.append(f"{doc_name} (置信度：{confidence:.1f})")
 
                 if source_list:
                     answer += source_text + ", ".join(source_list)
@@ -59,7 +59,7 @@ class KGQAEngine:
 
         except Exception as e:
             logger.error(f"Error answering question: {e}")
-            return f"I encountered an error while processing your question: {str(e)}", []
+            return f"处理您的问题时发生错误：{str(e)}", []
 
     def _parse_question_intent(self, question: str, chat_history: List[Dict] = None) -> Dict:
         """解析问题意图"""
@@ -165,13 +165,13 @@ class KGQAEngine:
         except Exception as e:
             logger.error(f"Error in graph query: {e}")
             # 回退到简单回答
-            return f"I tried to query the knowledge graph but encountered an error: {str(e)}. Please try a different question or check if the document has been parsed.", []
+            return f"我在查询知识图谱时遇到错误：{str(e)}。请尝试不同的问题或检查文档是否已解析。", []
 
     def _answer_via_vector_search(self, question: str, document_id: Optional[str],
                                  intent: Dict) -> Tuple[str, List[Dict]]:
         """通过向量检索回答问题（可选实现）"""
         # 如果实现向量检索
-        return "Vector search is not implemented yet. Please use graph query mode.", []
+        return "向量检索功能尚未实现。请使用图查询模式。", []
 
     def _generate_cypher_query(self, question: str, intent: Dict,
                               document_id: Optional[str]) -> str:
@@ -187,12 +187,12 @@ class KGQAEngine:
         if not query_results:
             if intent.get('entities'):
                 entity_names = [e['name'] for e in intent['entities']]
-                return f"I couldn't find information about {', '.join(entity_names[:3])} in the knowledge graph. The document might not contain these entities or needs to be parsed."
+                return f"我在知识图谱中找不到关于 {', '.join(entity_names[:3])} 的信息。文档可能不包含这些实体或需要解析。"
             else:
-                return f"I couldn't find any information about '{question}' in the knowledge graph. The document might not contain this information or needs to be parsed."
+                return f"我在知识图谱中找不到关于'{question}'的信息。文档可能不包含此信息或需要解析。"
 
         # 结果摘要
-        result_summary = f"Found {len(query_results)} relevant result(s) in the knowledge graph."
+        result_summary = f"在知识图谱中找到 {len(query_results)} 个相关结果。"
 
         # 根据查询类型生成不同回答
         query_type = intent.get('query_type', 'general')
@@ -201,29 +201,29 @@ class KGQAEngine:
             if intent.get('entities'):
                 entity_names = [e['name'] for e in intent['entities'][:2]]
                 entities_str = ', '.join(entity_names)
-                return f"Based on the knowledge graph, {result_summary} Information about {entities_str} is available."
+                return f"根据知识图谱，{result_summary} 关于 {entities_str} 的信息可用。"
             else:
-                return f"Based on the knowledge graph, {result_summary} The knowledge graph contains information related to your question."
+                return f"根据知识图谱，{result_summary} 知识图谱包含与您问题相关的信息。"
 
         elif query_type == 'relationship_query':
             if intent.get('relations'):
                 rel_types = [r['type'] for r in intent['relations'][:2]]
                 rels_str = ', '.join(rel_types)
-                return f"Based on the knowledge graph, {result_summary} Information about {rels_str} relationships is available."
+                return f"根据知识图谱，{result_summary} 关于 {rels_str} 关系的信息可用。"
             else:
-                return f"Based on the knowledge graph, {result_summary} Relationship information is available in the graph."
+                return f"根据知识图谱，{result_summary} 图谱中包含关系信息。"
 
         elif query_type == 'comparison_query':
-            return f"Based on the knowledge graph, {result_summary} Comparison data is available for analysis."
+            return f"根据知识图谱，{result_summary} 可用于比较分析的数据。"
 
         elif query_type == 'list_query':
-            return f"Based on the knowledge graph, {result_summary} Here are the relevant items:"
+            return f"根据知识图谱，{result_summary} 以下是相关项目："
 
         elif query_type == 'explanation_query':
-            return f"Based on the knowledge graph, {result_summary} Here's an explanation based on the available data:"
+            return f"根据知识图谱，{result_summary} 以下是基于可用数据的解释："
 
         else:
-            return f"Based on the knowledge graph, {result_summary} Here's what I found regarding your question."
+            return f"根据知识图谱，{result_summary} 以下是我关于您问题找到的内容。"
 
     def _extract_source_info(self, query_results: List) -> List[Dict]:
         """从查询结果中提取来源信息"""
