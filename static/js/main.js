@@ -607,7 +607,7 @@ $(document).ready(function() {
                 <div class="mt-2">
                     <button class="btn btn-sm btn-outline-danger cancel-parsing-btn"
                             data-task-id="${progress.task_id}"
-                            onclick="event.stopPropagation();">
+                            onclick="cancelParsingForFileItem('${progress.task_id}', $(this).closest('.uploaded-file-item')); event.stopPropagation();">
                         <i class="fas fa-times me-1"></i>Cancel
                     </button>
                 </div>
