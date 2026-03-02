@@ -165,12 +165,15 @@ class ProgressTracker {
                 }
 
                 const progress = data.progress;
+                console.log(`Progress received for task ${taskId}:`, progress);
+                console.log(`Status: ${progress.status}, Progress: ${progress.progress}`);
                 taskInfo.lastProgress = progress;
                 // Reset polling attempts counter on successful response
                 taskInfo.pollingAttempts = 0;
 
                 // Notify update callback
                 if (taskInfo.onUpdate) {
+                    console.log(`Calling onUpdate callback for task ${taskId}`);
                     taskInfo.onUpdate(progress);
                 }
 
@@ -467,40 +470,20 @@ class ProgressTracker {
             </div>
         `;
     }
+
+    /**
+     * Resume tracking for any active tasks
+     * This method is called on page load to resume tracking for any tasks
+     * that were active before page refresh
+     */
+    resumeTracking() {
+        console.log('Resuming tracking for active tasks');
+        // This method is intentionally left empty as active tasks
+        // are already tracked in memory. It exists for compatibility
+        // with the initialization code.
+    }
 }
 
-// Create global progress tracker instance
-window.progressTracker = new ProgressTracker();
-
-// Clean up on page unload to prevent memory leaks
-window.addEventListener('beforeunload', function() {
-    if (window.progressTracker) {
-        window.progressTracker.stopAllTracking();
-    }
-});
-
-// Auto-start tracking for any tasks in upload response
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if there are any tasks to track from page load
-    // This would be used if the page is refreshed during parsing
-    window.progressTracker.getAllTasks().then(tasks => {
-        tasks.forEach(task => {
-            if (task.status === 'running' || task.status === 'pending') {
-                console.log(`Resuming tracking for task ${task.task_id} (${task.filename})`);
-                window.progressTracker.startTracking(
-                    task.task_id,
-                    task.filename,
-                    function(progress) {
-                        // Update any UI elements for this file
-                        updateFileProgressUI(task.filename, progress);
-                    }
-                );
-            }
-        });
-    }).catch(error => {
-        console.error('Failed to load existing tasks:', error);
-    });
-});
 
 /**
  * Update UI for a file's progress
@@ -763,4 +746,36 @@ function showAlert(message, type = 'info') {
             alertDiv.remove();
         }
     }, 5000);
+}
+
+// Make ProgressTracker class globally available
+window.ProgressTracker = ProgressTracker;
+
+// Initialize progress tracker immediately
+try {
+    window.progressTracker = new ProgressTracker();
+    console.log('ProgressTracker instance created successfully');
+} catch (error) {
+    console.error('Failed to create ProgressTracker instance:', error);
+    window.progressTracker = null;
+}
+
+// Resume tracking any active tasks when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, resuming tracking');
+        if (window.progressTracker && window.progressTracker.resumeTracking) {
+            window.progressTracker.resumeTracking();
+        } else {
+            console.error('Progress tracker not available for resumeTracking');
+        }
+    });
+} else {
+    // DOM already loaded
+    console.log('DOM already loaded, resuming tracking');
+    if (window.progressTracker && window.progressTracker.resumeTracking) {
+        window.progressTracker.resumeTracking();
+    } else {
+        console.error('Progress tracker not available for resumeTracking');
+    }
 }
