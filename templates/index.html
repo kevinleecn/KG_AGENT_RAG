@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Upload Documents - KG QA Demo{% endblock %}
+{% block title %}上传文档 - 知识图谱问答演示{% endblock %}
 
 {% block head_extra %}
 <!-- D3.js for graph visualization in Knowledge Graph Nodes card -->
@@ -14,10 +14,10 @@
         <!-- Page Header -->
         <div class="page-header mb-4">
             <h1 class="display-5">
-                <i class="fas fa-file-upload text-primary me-2"></i>Upload Documents
+                <i class="fas fa-file-upload text-primary me-2"></i>上传文档
             </h1>
             <p class="lead">
-                Upload documents to build a knowledge graph. Supported formats:
+                上传文档以构建知识图谱。支持的格式：
                 <span class="badge bg-secondary">.txt</span>
                 <span class="badge bg-secondary">.docx</span>
                 <span class="badge bg-secondary">.pdf</span>
@@ -29,27 +29,27 @@
         <div class="card shadow">
             <div class="card-header bg-light">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-cloud-upload-alt me-2"></i>Select Files
+                    <i class="fas fa-cloud-upload-alt me-2"></i>选择文件
                 </h5>
             </div>
             <div class="card-body">
                 <!-- File Drop Zone -->
                 <div class="file-upload-area p-5 text-center border-dashed rounded" id="dropZone">
                     <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
-                    <h5 class="mb-2">Drag & drop files here</h5>
-                    <p class="text-muted mb-3">or click to browse</p>
+                    <h5 class="mb-2">拖拽文件到此处</h5>
+                    <p class="text-muted mb-3">或点击浏览</p>
                     <input type="file" id="fileInput" class="d-none" multiple accept=".txt,.docx,.pdf,.pptx">
                     <button type="button" class="btn btn-primary" id="browseBtn">
-                        <i class="fas fa-folder-open me-2"></i>Browse Files
+                        <i class="fas fa-folder-open me-2"></i>浏览文件
                     </button>
                     <p class="small text-muted mt-3">
-                        Maximum file size: 16MB per file
+                        最大文件大小：每文件 16MB
                     </p>
                 </div>
 
                 <!-- Selected Files List -->
                 <div class="mt-4" id="fileListContainer" style="display: none;">
-                    <h6 class="mb-3">Selected Files</h6>
+                    <h6 class="mb-3">已选文件</h6>
                     <div class="list-group" id="fileList">
                         <!-- Files will be added here dynamically -->
                     </div>
@@ -58,7 +58,7 @@
                 <!-- Upload Button -->
                 <div class="mt-4 text-end">
                     <button type="button" class="btn btn-success" id="uploadBtn" disabled>
-                        <i class="fas fa-upload me-2"></i>Upload Files
+                        <i class="fas fa-upload me-2"></i>上传文件
                     </button>
                 </div>
             </div>
@@ -68,15 +68,15 @@
         <div class="card mt-4">
             <div class="card-header bg-light">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-info-circle me-2"></i>How It Works
+                    <i class="fas fa-info-circle me-2"></i>工作原理
                 </h5>
             </div>
             <div class="card-body">
                 <ol class="mb-0">
-                    <li>Select one or more documents (TXT, DOCX, PDF, PPTX)</li>
-                    <li>Files will be uploaded to the server</li>
-                    <li>In later phases: documents will be parsed and a knowledge graph will be built</li>
-                    <li>You'll be able to ask questions about the document content</li>
+                    <li>选择一个或多个文档（TXT、DOCX、PDF、PPTX）</li>
+                    <li>文件将上传到服务器</li>
+                    <li>在后续阶段：文档将被解析并构建知识图谱</li>
+                    <li>您将能够询问有关文档内容的问题</li>
                 </ol>
             </div>
         </div>
@@ -90,34 +90,34 @@
         <div class="card mt-4">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-file-alt me-2"></i>Uploaded Files
+                    <i class="fas fa-file-alt me-2"></i>已上传文件
                 </h5>
                 <button type="button" class="btn btn-sm btn-outline-primary" id="refreshFilesBtn">
-                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                    <i class="fas fa-sync-alt me-1"></i>刷新
                 </button>
             </div>
             <div class="card-body">
                 <!-- Extraction Method Selector -->
                 <div class="mb-3 p-3 bg-light rounded">
                     <label class="form-label mb-2">
-                        <i class="fas fa-brain me-2"></i>Knowledge Extraction Method
+                        <i class="fas fa-brain me-2"></i>知识提取方法
                     </label>
                     <div class="row">
                         <div class="col-md-8">
                             <select class="form-select" id="extractionMethodSelect">
-                                <option value="spacy" selected>spaCy ( spaCy NLP Library - Fast, Local)</option>
-                                <option value="llm">LLM API (DeepSeek-V3.2 - More Accurate, Cloud-based)</option>
+                                <option value="spacy" selected>spaCy（spaCy NLP 库 - 快速，本地）</option>
+                                <option value="llm">LLM API（DeepSeek-V3.2 - 更准确，云端）</option>
                             </select>
                         </div>
                         <div class="col-md-4">
                             <small class="text-muted">
-                                <i class="fas fa-info-circle me-1"></i>Default: spaCy (faster, no API needed)
+                                <i class="fas fa-info-circle me-1"></i>默认：spaCy（更快，无需 API）
                             </small>
                         </div>
                     </div>
                     <div class="form-text mt-2">
-                        <span class="badge bg-primary">spaCy</span> Uses Python spaCy library for fast local NLP extraction
-                        <span class="badge bg-info text-dark ms-2">LLM API</span> Uses DeepSeek-V3.2 for more accurate entity and relationship extraction
+                        <span class="badge bg-primary">spaCy</span> 使用 Python spaCy 库进行快速本地 NLP 提取
+                        <span class="badge bg-info text-dark ms-2">LLM API</span> 使用 DeepSeek-V3.2 进行更准确的实体和关系提取
                     </div>
                 </div>
                 <!-- Loading indicator -->
@@ -125,21 +125,21 @@
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <p class="mt-2 text-muted">Loading uploaded files...</p>
+                    <p class="mt-2 text-muted">正在加载已上传文件...</p>
                 </div>
 
                 <!-- Empty state -->
                 <div class="text-center py-4" id="filesEmpty" style="display: none;">
                     <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted">No files uploaded yet</h5>
-                    <p class="text-muted">Upload some files to see them listed here.</p>
+                    <h5 class="text-muted">暂无文件</h5>
+                    <p class="text-muted">上传文件后将在此显示。</p>
                 </div>
 
                 <!-- Files list -->
                 <div id="filesListContainer" style="display: none;">
                     <div class="mb-3">
-                        <span class="badge bg-info" id="filesCount">0 files</span>
-                        <span class="badge bg-secondary ms-2" id="totalSize">0 Bytes</span>
+                        <span class="badge bg-info" id="filesCount">0 个文件</span>
+                        <span class="badge bg-secondary ms-2" id="totalSize">0 字节</span>
                     </div>
                     <div class="list-group" id="uploadedFilesList">
                         <!-- Files will be added here dynamically -->
@@ -152,14 +152,14 @@
         <div class="card mt-4">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-project-diagram me-2"></i>Knowledge Graph Nodes
+                    <i class="fas fa-project-diagram me-2"></i>知识图谱节点
                 </h5>
                 <div>
                     <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="toggleViewBtn">
-                        <i class="fas fa-table me-1"></i>Table
+                        <i class="fas fa-table me-1"></i>表格
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleNodesBtn">
-                        <i class="fas fa-eye me-1"></i>Show/Hide
+                        <i class="fas fa-eye me-1"></i>显示/隐藏
                     </button>
                 </div>
             </div>
@@ -169,31 +169,31 @@
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <p class="mt-2 text-muted">Loading knowledge graph nodes...</p>
+                    <p class="mt-2 text-muted">正在加载知识图谱节点...</p>
                 </div>
 
                 <!-- Empty state -->
                 <div class="text-center py-4" id="nodesEmpty" style="display: none;">
                     <i class="fas fa-project-diagram fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted" id="nodesEmptyTitle">No nodes available</h5>
-                    <p class="text-muted" id="nodesEmptyMessage">Select a parsed document to view its knowledge graph nodes.</p>
+                    <h5 class="text-muted" id="nodesEmptyTitle">暂无节点</h5>
+                    <p class="text-muted" id="nodesEmptyMessage">请选择已解析的文档以查看其知识图谱节点。</p>
                     <div id="nodesEmptyActions" class="mt-3"></div>
                 </div>
 
                 <!-- Table View Container -->
                 <div id="tableViewContainer" style="display: block;">
                     <div class="mb-3">
-                        <span class="badge bg-info" id="nodesCount">0 nodes</span>
-                        <span class="badge bg-secondary ms-2" id="nodesTypes">0 types</span>
+                        <span class="badge bg-info" id="nodesCount">0 个节点</span>
+                        <span class="badge bg-secondary ms-2" id="nodesTypes">0 种类型</span>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover table-sm" id="nodesTable">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Confidence</th>
-                                    <th>Actions</th>
+                                    <th>名称</th>
+                                    <th>类型</th>
+                                    <th>置信度</th>
+                                    <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="nodesTableBody">
@@ -222,8 +222,8 @@
                             </button>
                         </div>
                         <div class="float-end">
-                            <span class="badge bg-info me-2" id="graphNodeCount">0 nodes</span>
-                            <span class="badge bg-secondary" id="graphLinkCount">0 links</span>
+                            <span class="badge bg-info me-2" id="graphNodeCount">0 个节点</span>
+                            <span class="badge bg-secondary" id="graphLinkCount">0 条关系</span>
                         </div>
                     </div>
 
@@ -234,7 +234,7 @@
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Loading graph...</span>
                                 </div>
-                                <p class="mt-2 text-muted">Rendering graph...</p>
+                                <p class="mt-2 text-muted">正在渲染图谱...</p>
                             </div>
                         </div>
                         <div class="tooltip" id="graphTooltip" style="display: none;"></div>
@@ -242,7 +242,7 @@
 
                     <!-- Legend -->
                     <div class="graph-legend mt-2" id="graphLegend">
-                        <small><strong>Legend:</strong></small>
+                        <small><strong>图例：</strong></small>
                         <div id="legendItems" class="d-flex flex-wrap gap-2 mt-1"></div>
                     </div>
                 </div>
@@ -255,13 +255,13 @@
         <div class="card chat-window shadow-sm">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-robot me-2"></i>Knowledge Graph Assistant
+                    <i class="fas fa-robot me-2"></i>知识图谱助手
                 </h5>
                 <div>
-                    <button class="btn btn-sm btn-light" id="clearChatBtn" title="Clear chat history">
+                    <button class="btn btn-sm btn-light" id="clearChatBtn" title="清除聊天记录">
                         <i class="fas fa-trash"></i>
                     </button>
-                    <button class="btn btn-sm btn-light" id="toggleChatBtn" title="Minimize">
+                    <button class="btn btn-sm btn-light" id="toggleChatBtn" title="最小化">
                         <i class="fas fa-minus"></i>
                     </button>
                 </div>
@@ -270,19 +270,19 @@
                 <!-- 初始欢迎消息 -->
                 <div class="message assistant">
                     <div class="message-header">
-                        <strong>Assistant</strong>
-                        <small class="text-muted">Just now</small>
+                        <strong>助手</strong>
+                        <small class="text-muted">刚刚</small>
                     </div>
                     <div class="message-content">
-                        Hello! I'm your Knowledge Graph Assistant. You can ask me questions about your uploaded documents.
-                        Try asking about entities, relationships, or specific documents.
+                        您好！我是您的知识图谱助手。您可以询问有关已上传文档的问题。
+                        尝试询问实体、关系或特定文档相关内容。
                     </div>
                 </div>
             </div>
             <div class="card-footer">
                 <div class="input-group">
                     <textarea class="form-control" id="chatInput"
-                              placeholder="Ask about your documents..."
+                              placeholder="询问有关您的文档的问题..."
                               rows="2"></textarea>
                     <button class="btn btn-primary" id="sendMessageBtn">
                         <i class="fas fa-paper-plane"></i>
@@ -290,7 +290,7 @@
                 </div>
                 <div class="mt-2">
                     <small class="text-muted">
-                        <i class="fas fa-info-circle"></i> I can answer questions using the knowledge graph from your documents.
+                        <i class="fas fa-info-circle"></i> 我可以使用知识图谱回答有关您文档的问题。
                     </small>
                 </div>
             </div>
@@ -304,52 +304,52 @@
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="nodeDetailsModalLabel">Node Details</h5>
+                        <h5 class="modal-title" id="nodeDetailsModalLabel">节点详情</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="row">
                             <div class="col-md-6">
-                                <h6>Basic Information</h6>
+                                <h6>基本信息</h6>
                                 <table class="table table-sm">
                                     <tr>
-                                        <th>Name:</th>
+                                        <th>名称：</th>
                                         <td id="nodeDetailName">-</td>
                                     </tr>
                                     <tr>
-                                        <th>Type:</th>
+                                        <th>类型：</th>
                                         <td id="nodeDetailType">-</td>
                                     </tr>
                                     <tr>
-                                        <th>Confidence:</th>
+                                        <th>置信度：</th>
                                         <td id="nodeDetailConfidence">-</td>
                                     </tr>
                                     <tr>
-                                        <th>Source Document:</th>
+                                        <th>来源文档：</th>
                                         <td id="nodeDetailSourceDocument">-</td>
                                     </tr>
                                     <tr>
-                                        <th>Node ID:</th>
+                                        <th>节点 ID：</th>
                                         <td id="nodeDetailId" class="text-muted small">-</td>
                                     </tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
-                                <h6>Properties</h6>
+                                <h6>属性</h6>
                                 <div class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;">
-                                    <pre id="nodeDetailProperties" class="mb-0 small">No properties available</pre>
+                                    <pre id="nodeDetailProperties" class="mb-0 small">暂无属性</pre>
                                 </div>
                             </div>
                         </div>
                         <div class="mt-3">
-                            <h6>Connections</h6>
+                            <h6>连接关系</h6>
                             <div class="alert alert-info" id="nodeConnectionsInfo">
-                                Connection information would be shown here in a more advanced visualization.
+                                连接信息将在更高级的可视化视图中显示。
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
                     </div>
                 </div>
             </div>

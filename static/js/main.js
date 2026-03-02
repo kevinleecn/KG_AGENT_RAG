@@ -82,7 +82,7 @@ $(document).ready(function() {
         // Refresh button click
         $refreshFilesBtn.on('click', function() {
             loadUploadedFiles();
-            showAlert('info', 'File list refreshed.');
+            showAlert('info', '文件列表已刷新。');
         });
     }
 
@@ -136,7 +136,7 @@ $(document).ready(function() {
         });
 
         if (validFiles.length === 0) {
-            showAlert('warning', 'No valid files selected. Please select .txt, .docx, .pdf, or .pptx files.');
+            showAlert('warning', '未选择有效文件。请选择 .txt、.docx、.pdf 或 .pptx 文件。');
             return;
         }
 
@@ -203,7 +203,7 @@ $(document).ready(function() {
      */
     function uploadFiles() {
         if (selectedFiles.length === 0) {
-            showAlert('warning', 'No files selected.');
+            showAlert('warning', '未选择文件。');
             return;
         }
 
@@ -262,7 +262,7 @@ $(document).ready(function() {
             // Refresh uploaded files list
             loadUploadedFiles();
         } else {
-            showAlert('danger', response.error || 'Upload failed.');
+            showAlert('danger', response.error || '上传失败。');
         }
     }
 
@@ -270,7 +270,7 @@ $(document).ready(function() {
      * Handle upload error
      */
     function handleUploadError(xhr) {
-        let errorMessage = 'Upload failed. Please try again.';
+        let errorMessage = '上传失败，请重试。';
 
         try {
             const response = JSON.parse(xhr.responseText);
@@ -422,12 +422,12 @@ $(document).ready(function() {
                 if (response.success) {
                     renderUploadedFilesList(response);
                 } else {
-                    showAlert('danger', 'Failed to load file list: ' + (response.error || 'Unknown error'));
+                    showAlert('danger', '加载文件列表失败：' + (response.error || '未知错误'));
                     showEmptyState();
                 }
             },
             error: function(xhr) {
-                let errorMessage = 'Failed to load file list. Please try again.';
+                let errorMessage = '加载文件列表失败，请重试。';
                 try {
                     const response = JSON.parse(xhr.responseText);
                     errorMessage = response.error || errorMessage;
@@ -674,7 +674,7 @@ $(document).ready(function() {
         // Show success alert
         const entityCount = progress.result?.entity_count || 0;
         const relationCount = progress.result?.relationship_count || 0;
-        showAlert('success', `Document "${filename}" parsed successfully. Found ${entityCount} entities and ${relationCount} relations.`);
+        showAlert('success', `文档 "${filename}" 解析成功。找到 ${entityCount} 个实体和 ${relationCount} 个关系。`);
 
         // Refresh file list to get updated parsing state (optional)
         // loadUploadedFiles();
@@ -733,7 +733,7 @@ $(document).ready(function() {
         }
 
         // Show error alert
-        showAlert('danger', `Failed to parse "${filename}": ${errorMessage}`);
+        showAlert('danger', `解析 "${filename}" 失败：${errorMessage}`);
     }
 
     /**
@@ -792,11 +792,11 @@ $(document).ready(function() {
         if (window.progressTracker) {
             window.progressTracker.cancelTask(taskId)
                 .then(() => {
-                    showAlert('Parsing cancelled successfully', 'success');
+                    showAlert('success', '解析已成功取消。');
                 })
                 .catch(error => {
                     console.error('Failed to cancel parsing:', error);
-                    showAlert(`Failed to cancel parsing: ${error.message}`, 'danger');
+                    showAlert(`取消解析失败：${error.message}`, 'danger');
                 });
         }
     }
@@ -830,7 +830,7 @@ $(document).ready(function() {
     $('#nav-graph, #nav-chat').on('click', function(e) {
         if ($(this).hasClass('disabled')) {
             e.preventDefault();
-            showAlert('info', 'This feature will be available in Phase 2/3.');
+            showAlert('info', '此功能将在第二/第三阶段提供。');
         }
     });
 
@@ -845,7 +845,7 @@ $(document).ready(function() {
         const isParsed = $(this).data('parsed');
 
         if (!isParsed) {
-            showAlert('info', 'This file needs to be parsed first to extract knowledge graph nodes.');
+            showAlert('info', '此文件需要先解析以提取知识图谱节点。');
             return;
         }
 
@@ -921,7 +921,7 @@ $(document).ready(function() {
                             );
                         } catch (error) {
                             console.error('Failed to start progress tracking:', error);
-                            showAlert('danger', 'Failed to start progress tracking. Parsing may still be running in background.');
+                            showAlert('danger', '启动进度跟踪失败。解析可能仍在后台运行。');
                             // Fallback: show generic progress
                             $fileItem.find('.file-progress-container').removeClass('d-none').html(`
                                 <div class="progress mt-1" style="height: 20px;">
@@ -939,7 +939,7 @@ $(document).ready(function() {
                         }
                     } else {
                         console.error('Progress tracker not available');
-                        showAlert('danger', 'Progress tracking not available. Parsing started in background.');
+                        showAlert('danger', '进度跟踪不可用。解析已在后台启动。');
                         // Fallback: show generic progress
                         $fileItem.find('.file-progress-container').removeClass('d-none').html(`
                             <div class="progress mt-1" style="height: 20px;">
@@ -965,15 +965,15 @@ $(document).ready(function() {
                         step_description: 'Starting parsing process...'
                     });
 
-                    showAlert('info', `Started parsing "${filename}" in background. Progress will be shown below.`);
+                    showAlert('info', `已开始解析 "${filename}"。进度将在下方显示。`);
                 } else {
-                    showAlert('danger', `Failed to start parsing "${filename}": ${response.error || 'Unknown error'}`);
+                    showAlert('danger', `启动解析 "${filename}" 失败：${response.error || '未知错误'}`);
                     $button.prop('disabled', false);
                     $button.html('<i class="fas fa-redo"></i> Re-parse');
                 }
             },
             error: function(xhr) {
-                let errorMessage = 'Failed to start parsing. Please try again.';
+                let errorMessage = '启动解析失败，请重试。';
                 try {
                     const response = JSON.parse(xhr.responseText);
                     errorMessage = response.error || errorMessage;
@@ -1011,7 +1011,7 @@ $(document).ready(function() {
         console.log('Is Parsed:', isParsed);
 
         if (!isParsed) {
-            showAlert('info', 'This file needs to be parsed first to extract knowledge graph nodes.');
+            showAlert('info', '此文件需要先解析以提取知识图谱节点。');
             return;
         }
 
@@ -1077,11 +1077,11 @@ $(document).ready(function() {
                         }
 
                         console.log('File item removed, count updated');
-                        showAlert('success', `File "${filename}" deleted successfully.`);
+                        showAlert('success', `文件 "${filename}" 已成功删除。`);
                     });
                 } else {
                     console.log('Delete failed:', response.error);
-                    showAlert('danger', `Failed to delete "${filename}": ${response.error || 'Unknown error'}`);
+                    showAlert('danger', `删除 "${filename}" 失败：${response.error || '未知错误'}`);
                     $button.prop('disabled', false);
                     $button.html(originalHtml);
                 }
@@ -1089,7 +1089,7 @@ $(document).ready(function() {
             error: function(xhr, status, error) {
                 console.error('Delete error:', status, error);
                 console.error('Response text:', xhr.responseText);
-                let errorMessage = 'Failed to delete file. Please try again.';
+                let errorMessage = '删除文件失败，请重试。';
                 try {
                     const response = JSON.parse(xhr.responseText);
                     errorMessage = response.error || errorMessage;

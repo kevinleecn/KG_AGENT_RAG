@@ -319,23 +319,23 @@ class ProgressTracker {
         switch (progress.status) {
             case 'pending':
                 statusClass = 'bg-secondary';
-                statusText = 'Pending';
+                statusText = '等待中';
                 break;
             case 'running':
                 statusClass = 'bg-info progress-bar-striped progress-bar-animated';
-                statusText = 'Processing';
+                statusText = '处理中';
                 break;
             case 'completed':
                 statusClass = 'bg-success';
-                statusText = 'Completed';
+                statusText = '已完成';
                 break;
             case 'failed':
                 statusClass = 'bg-danger';
-                statusText = 'Failed';
+                statusText = '失败';
                 break;
             case 'cancelled':
                 statusClass = 'bg-warning';
-                statusText = 'Cancelled';
+                statusText = '已取消';
                 break;
         }
 
@@ -371,23 +371,23 @@ class ProgressTracker {
         switch (progress.status) {
             case 'pending':
                 badgeClass = 'bg-secondary';
-                badgeText = 'Pending';
+                badgeText = '等待中';
                 break;
             case 'running':
                 badgeClass = 'bg-info';
-                badgeText = 'Processing';
+                badgeText = '处理中';
                 break;
             case 'completed':
                 badgeClass = 'bg-success';
-                badgeText = 'Completed';
+                badgeText = '已完成';
                 break;
             case 'failed':
                 badgeClass = 'bg-danger';
-                badgeText = 'Failed';
+                badgeText = '失败';
                 break;
             case 'cancelled':
                 badgeClass = 'bg-warning';
-                badgeText = 'Cancelled';
+                badgeText = '已取消';
                 break;
         }
 
@@ -439,29 +439,29 @@ class ProgressTracker {
         return `
             <div class="card mt-2">
                 <div class="card-header">
-                    <h6 class="mb-0">Parsing Progress Report</h6>
+                    <h6 class="mb-0">解析进度报告</h6>
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-sm-3">Status</dt>
+                        <dt class="col-sm-3">状态</dt>
                         <dd class="col-sm-9">${ProgressTracker.createProgressBadge(progress)}</dd>
 
-                        <dt class="col-sm-3">Progress</dt>
+                        <dt class="col-sm-3">进度</dt>
                         <dd class="col-sm-9">${percent}%</dd>
 
-                        <dt class="col-sm-3">Current Step</dt>
+                        <dt class="col-sm-3">当前步骤</dt>
                         <dd class="col-sm-9">${stepDesc}</dd>
 
-                        <dt class="col-sm-3">Message</dt>
+                        <dt class="col-sm-3">消息</dt>
                         <dd class="col-sm-9">${message}</dd>
 
-                        <dt class="col-sm-3">Task Created</dt>
+                        <dt class="col-sm-3">任务创建时间</dt>
                         <dd class="col-sm-9">${escapedCreated}</dd>
 
-                        <dt class="col-sm-3">Last Updated</dt>
+                        <dt class="col-sm-3">最后更新</dt>
                         <dd class="col-sm-9">${escapedUpdated}</dd>
 
-                        <dt class="col-sm-3">Task Type</dt>
+                        <dt class="col-sm-3">任务类型</dt>
                         <dd class="col-sm-9">${taskType}</dd>
                     </dl>
                     ${resultHtml}
@@ -608,7 +608,7 @@ function updateListGroupItemProgressUI(fileListItem, progress) {
         if (fileNameDiv && !fileNameDiv.querySelector('.badge.bg-success')) {
             const badge = document.createElement('span');
             badge.className = 'badge bg-success ms-2';
-            badge.textContent = 'Parsed';
+            badge.textContent = '已解析';
             fileNameDiv.appendChild(badge);
         }
 
@@ -631,15 +631,15 @@ function updateListGroupItemProgressUI(fileListItem, progress) {
                 <div class="parsing-result-summary">
                     <div class="d-flex align-items-center">
                         <span class="badge bg-success me-2">
-                            <i class="fas fa-check-circle me-1"></i>Parsed
+                            <i class="fas fa-check-circle me-1"></i>已解析
                         </span>
                         <span class="small text-muted">
             `;
 
             if (entityCount > 0 || relationCount > 0) {
-                reportHtml += `${escapedEntityCount} entities · ${escapedRelationCount} relations`;
+                reportHtml += `${escapedEntityCount} 个实体 · ${escapedRelationCount} 个关系`;
             } else {
-                reportHtml += `${escapedTextLength} chars · ${escapedWordCount} words`;
+                reportHtml += `${escapedTextLength} 字符 · ${escapedWordCount} 词`;
             }
 
             reportHtml += `
@@ -666,7 +666,7 @@ function updateListGroupItemProgressUI(fileListItem, progress) {
         // Show error in result container
         if (resultContainer) {
             resultContainer.classList.remove('d-none');
-            const errorMessage = progress.error || 'Parsing failed';
+            const errorMessage = progress.error || '解析失败';
             // Clear result container
             resultContainer.innerHTML = '';
 
@@ -691,7 +691,7 @@ function updateListGroupItemProgressUI(fileListItem, progress) {
         if (fileActions && !fileActions.querySelector('.parse-file-btn')) {
             const parseBtn = document.createElement('button');
             parseBtn.className = 'btn btn-sm btn-outline-warning parse-file-btn';
-            parseBtn.title = 'Parse document to extract knowledge';
+            parseBtn.title = '解析文档以提取知识';
             parseBtn.innerHTML = '<i class="fas fa-cogs"></i>';
             parseBtn.onclick = function(e) {
                 e.stopPropagation();

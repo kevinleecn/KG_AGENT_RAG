@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Knowledge Graph Visualization - KG QA Demo{% endblock %}
+{% block title %}知识图谱可视化 - 知识图谱问答演示{% endblock %}
 
 {% block head_extra %}
 <!-- D3.js for graph visualization -->
@@ -104,10 +104,10 @@
         <!-- Page Header -->
         <div class="page-header mb-4">
             <h1 class="display-5">
-                <i class="fas fa-project-diagram text-primary me-2"></i>Knowledge Graph Visualization
+                <i class="fas fa-project-diagram text-primary me-2"></i>知识图谱可视化
             </h1>
             <p class="lead">
-                Interactive visualization of extracted entities and relationships.
+                交互式可视化显示提取的实体和关系。
             </p>
         </div>
 
@@ -115,44 +115,44 @@
         <div class="card shadow mb-4">
             <div class="card-header bg-light">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-sliders-h me-2"></i>Graph Controls
+                    <i class="fas fa-sliders-h me-2"></i>图谱控制
                 </h5>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="documentSelect" class="form-label">Select Document</label>
+                            <label for="documentSelect" class="form-label">选择文档</label>
                             <select class="form-select" id="documentSelect">
-                                <option value="">All Documents (Combined Graph)</option>
+                                <option value="">所有文档（合并图谱）</option>
                                 <!-- Documents will be populated dynamically -->
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="entityTypeFilter" class="form-label">Filter by Entity Type</label>
+                            <label for="entityTypeFilter" class="form-label">按实体类型筛选</label>
                             <select class="form-select" id="entityTypeFilter" multiple>
                                 <!-- Entity types will be populated dynamically -->
                             </select>
-                            <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple types</small>
+                            <small class="form-text text-muted">按住 Ctrl/Cmd 可选择多种类型</small>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="relationshipTypeFilter" class="form-label">Filter by Relationship Type</label>
+                            <label for="relationshipTypeFilter" class="form-label">按关系类型筛选</label>
                             <select class="form-select" id="relationshipTypeFilter" multiple>
                                 <!-- Relationship types will be populated dynamically -->
                             </select>
-                            <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple types</small>
+                            <small class="form-text text-muted">按住 Ctrl/Cmd 可选择多种类型</small>
                         </div>
                         <div class="d-grid gap-2 d-md-flex">
                             <button type="button" class="btn btn-primary" id="refreshGraphBtn">
-                                <i class="fas fa-sync-alt me-2"></i>Refresh Graph
+                                <i class="fas fa-sync-alt me-2"></i>刷新图谱
                             </button>
                             <button type="button" class="btn btn-outline-secondary" id="resetFiltersBtn">
-                                <i class="fas fa-times me-2"></i>Reset Filters
+                                <i class="fas fa-times me-2"></i>重置筛选
                             </button>
                             <button type="button" class="btn btn-outline-success" id="exportGraphBtn">
-                                <i class="fas fa-download me-2"></i>Export
+                                <i class="fas fa-download me-2"></i>导出
                             </button>
                         </div>
                     </div>
@@ -164,11 +164,11 @@
         <div class="card shadow">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-network me-2"></i>Interactive Graph
+                    <i class="fas fa-chart-network me-2"></i>交互式图谱
                 </h5>
                 <div>
-                    <span class="badge bg-info me-2" id="nodeCount">0 nodes</span>
-                    <span class="badge bg-secondary" id="linkCount">0 links</span>
+                    <span class="badge bg-info me-2" id="nodeCount">0 个节点</span>
+                    <span class="badge bg-secondary" id="linkCount">0 条关系</span>
                 </div>
             </div>
             <div class="card-body">
@@ -178,7 +178,7 @@
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="mt-2 text-muted">Loading graph data...</p>
+                        <p class="mt-2 text-muted">正在加载图谱数据...</p>
                     </div>
                 </div>
 
@@ -189,7 +189,7 @@
 
                 <!-- Legend -->
                 <div class="legend mt-3" id="graphLegend">
-                    <strong>Legend:</strong>
+                    <strong>图例：</strong>
                     <div id="legendItems">
                         <!-- Legend items will be populated dynamically -->
                     </div>
@@ -201,7 +201,7 @@
         <div class="card shadow mt-4">
             <div class="card-header bg-light">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-bar me-2"></i>Graph Statistics
+                    <i class="fas fa-chart-bar me-2"></i>图谱统计
                 </h5>
             </div>
             <div class="card-body">
@@ -265,11 +265,11 @@ function loadDocuments() {
             if (response.success) {
                 const select = $('#documentSelect');
                 select.empty();
-                select.append('<option value="">All Documents (Combined Graph)</option>');
+                select.append('<option value="">所有文档（合并图谱）</option>');
 
                 response.files.forEach(function(file) {
                     if (file.parsed) {
-                        select.append(`<option value="${file.filename}">${file.filename} (${file.word_count} words)</option>`);
+                        select.append(`<option value="${file.filename}">${file.filename} (${file.word_count} 字)</option>`);
                     }
                 });
             }
@@ -296,13 +296,13 @@ function loadGraphData(documentId = '') {
                 updateStatistics(graphData);
                 updateFilters(graphData);
             } else {
-                alert('Error loading graph: ' + (response.error || 'Unknown error'));
+                alert('加载图谱出错：' + (response.error || '未知错误'));
             }
             showLoading(false);
         },
         error: function(xhr, status, error) {
             console.error('Error loading graph data:', error);
-            alert('Failed to load graph data. Check console for details.');
+            alert('加载图谱数据失败。请查看控制台了解详情。');
             showLoading(false);
         }
     });
@@ -319,7 +319,7 @@ function renderGraph(data) {
     d3.select('#graphContainer').selectAll('*').remove();
 
     if (!data || !data.nodes || !data.links) {
-        $('#graphContainer').html('<div class="text-center p-5 text-muted">No graph data available</div>');
+        $('#graphContainer').html('<div class="text-center p-5 text-muted">暂无图谱数据</div>');
         return;
     }
 
@@ -568,7 +568,7 @@ function updateStatistics(data) {
             <div class="card bg-light">
                 <div class="card-body text-center">
                     <h2 class="display-6">${stats.total_nodes || 0}</h2>
-                    <p class="text-muted mb-0">Total Nodes</p>
+                    <p class="text-muted mb-0">总节点数</p>
                 </div>
             </div>
         </div>
@@ -576,7 +576,7 @@ function updateStatistics(data) {
             <div class="card bg-light">
                 <div class="card-body text-center">
                     <h2 class="display-6">${stats.total_links || 0}</h2>
-                    <p class="text-muted mb-0">Total Links</p>
+                    <p class="text-muted mb-0">总关系数</p>
                 </div>
             </div>
         </div>
@@ -584,7 +584,7 @@ function updateStatistics(data) {
             <div class="card bg-light">
                 <div class="card-body text-center">
                     <h2 class="display-6">${Object.keys(stats.entity_types || {}).length}</h2>
-                    <p class="text-muted mb-0">Entity Types</p>
+                    <p class="text-muted mb-0">实体类型</p>
                 </div>
             </div>
         </div>
@@ -592,7 +592,7 @@ function updateStatistics(data) {
             <div class="card bg-light">
                 <div class="card-body text-center">
                     <h2 class="display-6">${Object.keys(stats.relationship_types || {}).length}</h2>
-                    <p class="text-muted mb-0">Relationship Types</p>
+                    <p class="text-muted mb-0">关系类型</p>
                 </div>
             </div>
         </div>
@@ -662,7 +662,7 @@ function resetFilters() {
 // Export graph
 function exportGraph() {
     if (!graphData) {
-        alert('No graph data to export');
+        alert('暂无图谱数据可导出');
         return;
     }
 
