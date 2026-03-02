@@ -19,6 +19,44 @@ from config.settings import Config
 logger = logging.getLogger(__name__)
 
 
+def _serialize_neo4j_result(item):
+    """序列化 Neo4j 查询结果（Node、Relationship 等）为 JSON 兼容格式"""
+    try:
+        from neo4j.graph import Node, Relationship, Path
+
+        if isinstance(item, Node):
+            return {
+                '_type': 'node',
+                'id': item.id,
+                'labels': list(item.labels),
+                'properties': dict(item)
+            }
+        elif isinstance(item, Relationship):
+            return {
+                '_type': 'relationship',
+                'id': item.id,
+                'type': item.type,
+                'start_node_id': item.start_node.id,
+                'end_node_id': item.end_node.id,
+                'properties': dict(item)
+            }
+        elif isinstance(item, Path):
+            return {
+                '_type': 'path',
+                'nodes': [_serialize_neo4j_result(n) for n in item.nodes],
+                'relationships': [_serialize_neo4j_result(r) for r in item.relationships]
+            }
+        elif isinstance(item, dict):
+            return {k: _serialize_neo4j_result(v) for k, v in item.items()}
+        elif isinstance(item, list):
+            return [_serialize_neo4j_result(i) for i in item]
+        else:
+            return item
+    except ImportError:
+        # neo4j 库未安装，返回原始数据
+        return item
+
+
 class QuestionType:
     """问题类型枚举"""
     LLM_ONLY = "llm_only"           # 仅需 LLM（通用知识、助手身份等）
@@ -263,6 +301,9 @@ class FusionKGQAEngine:
                 logger.info("KG 无结果，回退到 LLM")
                 return self._answer_with_llm_fallback(question, "知识图谱中没有找到相关信息")
 
+            # 序列化 Neo4j 结果
+            serialized_results = _serialize_neo4j_result(results)
+
             # 使用 LLM 生成自然语言答案
             if self.llm_available:
                 answer = self.llm_reasoner.generate_answer(question, results)
@@ -278,7 +319,7 @@ class FusionKGQAEngine:
                 "confidence": confidence,
                 "evidence": {
                     "source_type": "knowledge_graph",
-                    "graph_results": results,
+                    "graph_results": serialized_results,
                     "reasoning_chain": []
                 }
             }
@@ -318,6 +359,9 @@ class FusionKGQAEngine:
                 confidence = 0.5
                 answer_type = "kg_only"
 
+            # 序列化 Neo4j 结果
+            serialized_kg_results = _serialize_neo4j_result(kg_results)
+
             return {
                 "success": True,
                 "answer": answer,
@@ -325,7 +369,7 @@ class FusionKGQAEngine:
                 "confidence": confidence,
                 "evidence": {
                     "source_type": "fusion",
-                    "graph_results": kg_results,
+                    "graph_results": serialized_kg_results,
                     "reasoning_chain": self._extract_reasoning_chain(answer, kg_results)
                 }
             }
