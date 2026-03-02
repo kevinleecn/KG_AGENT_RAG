@@ -438,12 +438,13 @@ class ParsingManager:
             self._triplet_extractor = TripletExtractor()
         return self._triplet_extractor
 
-    def extract_knowledge(self, filename: str) -> Dict[str, Any]:
+    def extract_knowledge(self, filename: str, extraction_method: str = 'spacy') -> Dict[str, Any]:
         """
         Extract knowledge from parsed text of a file.
 
         Args:
             filename: Name of the file
+            extraction_method: Knowledge extraction method ('spacy' or 'llm')
 
         Returns:
             Dictionary with knowledge extraction results
@@ -467,10 +468,18 @@ class ParsingManager:
             }
 
         try:
-            logger.info(f"Extracting knowledge from: {filename}")
+            logger.info(f"Extracting knowledge from: {filename} using {extraction_method}")
+
+            # Initialize knowledge extractor with selected method
+            from src.nlp.knowledge_extractor import KnowledgeExtractor
+            spacy_model = Config.SPACY_MODEL
+            use_llm = (extraction_method == 'llm')
+
+            # Create extractor with selected method
+            knowledge_extractor = KnowledgeExtractor(spacy_model=spacy_model, use_llm=use_llm)
 
             # Extract knowledge using NLP
-            extraction_result = self.knowledge_extractor.extract_from_text(
+            extraction_result = knowledge_extractor.extract_from_text(
                 text=parsed_text,
                 document_id=filename
             )
@@ -492,6 +501,7 @@ class ParsingManager:
 
             extraction_data = {
                 'filename': filename,
+                'extraction_method': extraction_method,
                 'extraction_result': extraction_result,
                 'triplets': graph_triplets,
                 'extraction_timestamp': datetime.now().isoformat()
@@ -507,10 +517,11 @@ class ParsingManager:
                 knowledge_extracted_at=datetime.now().isoformat(),
                 entity_count=len(extraction_result.get('entities', [])),
                 relationship_count=len(extraction_result.get('relationships', [])),
-                triplet_count=len(graph_triplets)
+                triplet_count=len(graph_triplets),
+                extraction_method=extraction_method
             )
 
-            logger.info(f"Successfully extracted knowledge from {filename}: "
+            logger.info(f"Successfully extracted knowledge from {filename} using {extraction_method}: "
                        f"{len(extraction_result.get('entities', []))} entities, "
                        f"{len(extraction_result.get('relationships', []))} relationships, "
                        f"{len(graph_triplets)} triplets")
@@ -664,13 +675,15 @@ class ParsingManager:
         return os.path.join(graph_dir, f"{safe_name}_graph.json")
 
     # Progress tracking methods
-    def parse_file_async(self, filename: str, progress_callback: Optional[Callable] = None) -> str:
+    def parse_file_async(self, filename: str, progress_callback: Optional[Callable] = None,
+                        extraction_method: str = 'spacy') -> str:
         """
         Parse a document file asynchronously with progress tracking.
 
         Args:
             filename: Name of the file to parse
             progress_callback: Optional callback function for progress updates
+            extraction_method: Knowledge extraction method ('spacy' or 'llm')
 
         Returns:
             Task ID for tracking progress
@@ -688,22 +701,23 @@ class ParsingManager:
             filename=filename,
             task_type=TaskType.PARSE,
             total_steps=100,  # Will be updated with actual page count
-            metadata={'file_path': file_path}
+            metadata={'file_path': file_path, 'extraction_method': extraction_method}
         )
 
         # Start parsing in background thread
         thread = threading.Thread(
             target=self._parse_file_worker,
-            args=(filename, task_id, progress_callback),
+            args=(filename, task_id, progress_callback, extraction_method),
             daemon=True
         )
         thread.start()
 
-        logger.info(f"Started async parsing for {filename} with task ID: {task_id}")
+        logger.info(f"Started async parsing for {filename} with task ID: {task_id}, method: {extraction_method}")
         return task_id
 
     def _parse_file_worker(self, filename: str, task_id: str,
-                          progress_callback: Optional[Callable] = None) -> None:
+                          progress_callback: Optional[Callable] = None,
+                          extraction_method: str = 'spacy') -> None:
         """
         Worker function for async parsing.
 
@@ -711,6 +725,7 @@ class ParsingManager:
             filename: Name of the file to parse
             task_id: Progress task ID
             progress_callback: Optional callback function for progress updates
+            extraction_method: Knowledge extraction method ('spacy' or 'llm')
         """
         file_path = os.path.join(self.upload_folder, filename)
         parsed_text_path = self.get_parsed_text_path(filename)

@@ -8,6 +8,12 @@ import os
 os.environ["NEO4J_PASSWORD"] = "neo4j168"
 os.environ["NEO4J_USER"] = "neo4j"
 
+# Set environment variables for LLM (DeepSeek V3.2)
+os.environ["OPENAI_API_KEY"] = "sk-0b0a00b2d4cc4d7d8dce645d5db1b739"
+os.environ["OPENAI_BASE_URL"] = "https://api.deepseek.com"
+os.environ["LLM_BACKEND"] = "openai"
+os.environ["LLM_MODEL"] = "deepseek-chat"  # DeepSeek-V3.2 uses deepseek-chat endpoint
+
 print(f"[APP DEBUG] Environment NEO4J_USER: {os.environ.get('NEO4J_USER')}")
 print(f"[APP DEBUG] Environment NEO4J_PASSWORD: {'*' * len(os.environ.get('NEO4J_PASSWORD', '')) if os.environ.get('NEO4J_PASSWORD') else 'None'}")
 
@@ -371,14 +377,19 @@ def parse_file_async(filename):
                 'error': f'File not found: {filename}'
             }), 404
 
-        # Start async parsing
-        task_id = parsing_manager.parse_file_async(filename)
+        # Get extraction method from request
+        data = request.get_json() or {}
+        extraction_method = data.get('extraction_method', 'spacy')  # Default to spacy
+
+        # Start async parsing with extraction method
+        task_id = parsing_manager.parse_file_async(filename, extraction_method=extraction_method)
 
         return jsonify({
             'success': True,
             'task_id': task_id,
             'filename': filename,
-            'message': f'Started asynchronous parsing for {filename}',
+            'extraction_method': extraction_method,
+            'message': f'Started asynchronous parsing for {filename} using {extraction_method}',
             'progress_url': f'/progress/{task_id}'
         })
 
@@ -553,12 +564,16 @@ def build_graph_for_file(filename):
         }), 500
 
 
-@app.route('/graph/extract/<filename>')
+@app.route('/graph/extract/<filename>', methods=['POST'])
 def extract_knowledge_for_file(filename):
     """Extract knowledge and build graph for a file."""
     try:
-        # Extract knowledge
-        extraction_result = parsing_manager.extract_knowledge(filename)
+        # Get extraction method from request
+        data = request.get_json() or {}
+        extraction_method = data.get('extraction_method', 'spacy')
+
+        # Extract knowledge with selected method
+        extraction_result = parsing_manager.extract_knowledge(filename, extraction_method=extraction_method)
 
         if not extraction_result.get('success', False):
             return jsonify(extraction_result)
@@ -569,6 +584,7 @@ def extract_knowledge_for_file(filename):
         return jsonify({
             'success': True,
             'filename': filename,
+            'extraction_method': extraction_method,
             'extraction_result': extraction_result,
             'build_result': build_result
         })

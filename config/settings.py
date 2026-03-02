@@ -32,13 +32,14 @@ class Config:
     NEO4J_DATABASE = os.environ.get('NEO4J_DATABASE', 'neo4j')
 
     # Knowledge Extraction settings
-    SPACY_MODEL = os.environ.get('SPACY_MODEL', 'en_core_web_sm')  # English model with NER
+    SPACY_MODEL = os.environ.get('SPACY_MODEL', 'zh_core_web_sm')  # Chinese model with NER
     EXTRACTION_CONFIDENCE_THRESHOLD = float(os.environ.get('EXTRACTION_CONFIDENCE_THRESHOLD', '0.7'))
 
     # LLM settings (optional, for enhanced extraction)
-    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY') or 'sk-0b0a00b2d4cc4d7d8dce645d5db1b739'
     LLM_BACKEND = os.environ.get('LLM_BACKEND', 'openai')  # openai, ollama, anthropic
-    LLM_MODEL = os.environ.get('LLM_MODEL', 'gpt-3.5-turbo')
+    LLM_MODEL = os.environ.get('LLM_MODEL', 'deepseek-chat')  # DeepSeek V3.2
+    OPENAI_BASE_URL = os.environ.get('OPENAI_BASE_URL') or 'https://api.deepseek.com'  # DeepSeek API base URL
 
     # Visualization settings
     D3_MAX_NODES = int(os.environ.get('D3_MAX_NODES', '500'))

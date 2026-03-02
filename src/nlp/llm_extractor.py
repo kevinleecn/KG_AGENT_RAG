@@ -19,7 +19,7 @@ class LLMExtractor:
     """LLM-based knowledge extractor for advanced entity and relationship extraction."""
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None,
-                 backend: Optional[str] = None):
+                 backend: Optional[str] = None, base_url: Optional[str] = None):
         """
         Initialize LLM extractor.
 
@@ -27,10 +27,12 @@ class LLMExtractor:
             api_key: LLM API key (default: from config)
             model: LLM model name (default: from config)
             backend: LLM backend (openai, ollama, anthropic) (default: from config)
+            base_url: Custom base URL for OpenAI-compatible API (default: from config)
         """
         self.api_key = api_key or Config.OPENAI_API_KEY
         self.model = model or Config.LLM_MODEL
         self.backend = backend or Config.LLM_BACKEND
+        self.base_url = base_url or getattr(Config, 'OPENAI_BASE_URL', None)
 
         # Initialize LLM client based on backend
         self.llm_client = self._init_llm_client()
@@ -52,16 +54,29 @@ class LLMExtractor:
         try:
             if self.backend == "openai":
                 from openai import OpenAI
-                return OpenAI(api_key=self.api_key)
+                # Use custom base URL if provided (for OpenAI-compatible APIs)
+                if self.base_url:
+                    logger.info(f"Using custom OpenAI-compatible API: {self.base_url}")
+                    return OpenAI(api_key=self.api_key, base_url=self.base_url)
+                else:
+                    return OpenAI(api_key=self.api_key)
             elif self.backend == "ollama":
                 # Ollama local setup
                 try:
                     from openai import OpenAI
-                    # Ollama compatible OpenAI client
-                    return OpenAI(
+                    # Ollama compatible OpenAI client with longer timeout for large models
+                    client = OpenAI(
                         base_url="http://localhost:11434/v1",
-                        api_key="ollama"  # Ollama doesn't require a key
+                        api_key="ollama",  # Ollama doesn't require a key
+                        timeout=300.0  # 5 minute timeout for Ollama
                     )
+                    # Test connection
+                    try:
+                        client.models.list()
+                        logger.info("Ollama OpenAI-compatible client initialized successfully")
+                    except Exception as e:
+                        logger.warning(f"Ollama connection test failed: {e}. Will retry on first call.")
+                    return client
                 except ImportError:
                     logger.warning("Ollama backend requested but OpenAI client not available.")
                     return None
@@ -220,18 +235,38 @@ Only return valid JSON, no other text."""
                     return response.choices[0].message.content
 
                 elif self.backend == "ollama":
+                    # Use Ollama native API via requests (more reliable than OpenAI compat)
+                    import requests
+
                     messages = []
                     if system_message:
                         messages.append({"role": "system", "content": system_message})
                     messages.append({"role": "user", "content": prompt})
 
-                    response = self.llm_client.chat.completions.create(
-                        model=self.model,  # e.g., "llama2", "mistral", etc.
-                        messages=messages,
-                        temperature=self.temperature,
-                        max_tokens=self.max_tokens
-                    )
-                    return response.choices[0].message.content
+                    try:
+                        response = requests.post(
+                            "http://localhost:11434/api/chat",
+                            json={
+                                "model": self.model,
+                                "messages": messages,
+                                "stream": False
+                            },
+                            timeout=300.0
+                        )
+                        response.raise_for_status()
+                        result = response.json()
+                        return result.get("message", {}).get("content", "")
+                    except requests.exceptions.RequestException as e:
+                        # Fallback to OpenAI compatible client
+                        logger.warning(f"Ollama native API failed: {e}, trying OpenAI compat...")
+                        client_response = self.llm_client.chat.completions.create(
+                            model=self.model,
+                            messages=messages,
+                            temperature=self.temperature,
+                            max_tokens=self.max_tokens,
+                            timeout=300.0
+                        )
+                        return client_response.choices[0].message.content
 
                 elif self.backend == "anthropic":
                     if system_message:
@@ -589,8 +624,22 @@ Only return valid JSON, no other text."""
             if self.backend == "openai" and self.api_key:
                 return True
             elif self.backend == "ollama":
-                # Ollama is local, assume available
-                return True
+                # Ollama is local, actually check if service is running
+                import requests
+                try:
+                    response = requests.get('http://localhost:11434/api/tags', timeout=2)
+                    if response.status_code == 200:
+                        logger.info("Ollama service is available")
+                        return True
+                    else:
+                        logger.warning(f"Ollama service returned status {response.status_code}")
+                        return False
+                except requests.exceptions.ConnectionError:
+                    logger.warning("Ollama service is not running (localhost:11434)")
+                    return False
+                except Exception as e:
+                    logger.warning(f"Ollama service check failed: {e}")
+                    return False
             elif self.backend == "anthropic" and self.api_key:
                 return True
             else:

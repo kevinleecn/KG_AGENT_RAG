@@ -97,6 +97,29 @@
                 </button>
             </div>
             <div class="card-body">
+                <!-- Extraction Method Selector -->
+                <div class="mb-3 p-3 bg-light rounded">
+                    <label class="form-label mb-2">
+                        <i class="fas fa-brain me-2"></i>Knowledge Extraction Method
+                    </label>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <select class="form-select" id="extractionMethodSelect">
+                                <option value="spacy" selected>spaCy ( spaCy NLP Library - Fast, Local)</option>
+                                <option value="llm">LLM API (DeepSeek-V3.2 - More Accurate, Cloud-based)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>Default: spaCy (faster, no API needed)
+                            </small>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">
+                        <span class="badge bg-primary">spaCy</span> Uses Python spaCy library for fast local NLP extraction
+                        <span class="badge bg-info text-dark ms-2">LLM API</span> Uses DeepSeek-V3.2 for more accurate entity and relationship extraction
+                    </div>
+                </div>
                 <!-- Loading indicator -->
                 <div class="text-center py-3" id="filesLoading">
                     <div class="spinner-border text-primary" role="status">
@@ -876,20 +899,25 @@ $(document).ready(function() {
 
     /**
      * Parse a document to extract knowledge
+     * @param {string} filename - Name of the file to parse
+     * @param {string} [extractionMethod] - Extraction method ('spacy' or 'llm'), defaults to current selection
      */
-    function parseDocument(filename) {
+    function parseDocument(filename, extractionMethod) {
         if (!filename) {
             console.error('No filename provided for parsing');
             return;
         }
 
-        console.log('Parsing and extracting knowledge from document:', filename);
+        // Use provided method or get from current selection
+        const method = extractionMethod || (window.currentExtractionMethod || 'spacy');
+        console.log('Parsing and extracting knowledge from document:', filename, 'using method:', method);
 
         // Show parsing in progress
         $('#nodesEmptyActions').html(`
             <div class="alert alert-warning">
                 <div class="spinner-border spinner-border-sm me-2" role="status"></div>
                 Parsing document "${filename}" and extracting knowledge...
+                <div class="small mt-1">Method: <strong>${method === 'llm' ? 'LLM API (DeepSeek-V3.2)' : 'spaCy (Local NLP)'}</strong></div>
                 <div class="small mt-1">This may take a minute. Extracting entities and relationships.</div>
             </div>
         `);
@@ -897,7 +925,9 @@ $(document).ready(function() {
         // Use graph/extract endpoint which parses, extracts knowledge, and builds graph
         $.ajax({
             url: `/graph/extract/${encodeURIComponent(filename)}`,
-            method: 'GET',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ extraction_method: method }),
             success: function(response) {
                 console.log('Parse and extract response:', response);
 
@@ -1162,6 +1192,24 @@ $(document).ready(function() {
 
     // Initialize when document is ready
     initNodesFunctionality();
+
+    // Initialize extraction method from localStorage
+    const savedMethod = localStorage.getItem('extractionMethod');
+    if (savedMethod && ['spacy', 'llm'].includes(savedMethod)) {
+        window.currentExtractionMethod = savedMethod;
+        $('#extractionMethodSelect').val(savedMethod);
+        console.log('Loaded saved extraction method:', savedMethod);
+    } else {
+        window.currentExtractionMethod = 'spacy';
+        console.log('Using default extraction method: spacy');
+    }
+
+    // Handle extraction method change
+    $('#extractionMethodSelect').on('change', function() {
+        window.currentExtractionMethod = $(this).val();
+        localStorage.setItem('extractionMethod', window.currentExtractionMethod);
+        console.log('Extraction method changed to:', window.currentExtractionMethod);
+    });
 });
 </script>
 {% endblock %}
