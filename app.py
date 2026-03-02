@@ -685,7 +685,7 @@ def extract_knowledge_for_file(filename):
 # Chat endpoints
 @app.route('/chat/ask', methods=['POST'])
 def chat_ask():
-    """处理聊天问题"""
+    """处理聊天问题（基础版）"""
     try:
         data = request.get_json()
         question = data.get('question')
@@ -715,6 +715,121 @@ def chat_ask():
     except Exception as e:
         logger.error(f"Error in chat_ask: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/chat/ask-enhanced', methods=['POST'])
+def chat_ask_enhanced():
+    """
+    增强版问答接口（支持深度推理）
+
+    功能:
+    - LLM 深度意图分析
+    - 混合检索策略
+    - 神经符号推理
+    - 可解释答案生成
+
+    参数:
+    - question: 用户问题
+    - document_id: 可选文档 ID
+    - chat_history: 聊天历史
+    - reasoning_depth: 推理深度 ("fast", "standard", "deep")
+    """
+    try:
+        data = request.get_json()
+        question = data.get('question')
+        document_id = data.get('document_id')
+        chat_history = data.get('chat_history', [])
+        reasoning_depth = data.get('reasoning_depth', 'standard')
+
+        if not question:
+            return jsonify({'success': False, 'error': 'No question provided'}), 400
+
+        # 初始化增强问答引擎
+        from src.qa.hybrid_qa_engine import HybridKGQAEngine
+        qa_engine = HybridKGQAEngine()
+
+        # 获取完整响应（包含答案、证据、推理链）
+        response = qa_engine.ask_question(
+            question=question,
+            document_id=document_id,
+            chat_history=chat_history,
+            reasoning_depth=reasoning_depth
+        )
+
+        return jsonify(response)
+
+    except Exception as e:
+        logger.error(f"Error in chat_ask_enhanced: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'answer': f'处理问题时发生错误：{str(e)}',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/chat/reason', methods=['POST'])
+def chat_reason():
+    """
+    深度推理接口 - 支持特殊推理任务
+
+    支持的推理类型:
+    - multihop: 多跳推理（查找实体间关联）
+    - hypothetical: 假设性推理（What-if 分析）
+    - comparison: 实体比较
+
+    参数:
+    - type: 推理类型
+    - question: 问题
+    - entities: 实体列表（多跳/比较需要）
+    - context: 上下文数据
+    """
+    try:
+        data = request.get_json()
+        reason_type = data.get('type', 'multihop')
+        question = data.get('question')
+        entities = data.get('entities', [])
+        context = data.get('context', {})
+
+        if not question:
+            return jsonify({'success': False, 'error': 'No question provided'}), 400
+
+        # 初始化 LLM 推理器
+        from src.qa.llm_reasoner import LLMReasoner
+        from config.settings import Config
+
+        reasoner = LLMReasoner(
+            api_key=Config.OPENAI_API_KEY,
+            model=Config.LLM_MODEL,
+            backend=Config.LLM_BACKEND,
+            base_url=getattr(Config, 'OPENAI_BASE_URL', None)
+        )
+
+        # 根据类型执行不同推理
+        if reason_type == 'multihop':
+            result = reasoner.perform_multihop_reasoning(question, entities, max_hops=3)
+        elif reason_type == 'hypothetical':
+            result = reasoner.answer_hypothetical_question(question, context)
+        elif reason_type == 'comparison':
+            aspects = data.get('aspects', [])
+            result = reasoner.compare_entities(entities, aspects, context)
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Unknown reason type: {reason_type}'
+            }), 400
+
+        return jsonify({
+            'success': True,
+            'result': result,
+            'type': reason_type
+        })
+
+    except Exception as e:
+        logger.error(f"Error in chat_reason: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/chat/history', methods=['GET'])
 def get_chat_history():

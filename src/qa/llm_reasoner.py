@@ -426,3 +426,229 @@ Cypher 查询："""
         analysis['documents'] = list(analysis['documents'])
 
         return analysis
+
+    def perform_multihop_reasoning(self, question: str, seed_entities: List[str],
+                                    max_hops: int = 3) -> Dict[str, Any]:
+        """
+        执行多跳推理 - 找出实体之间的隐藏连接
+
+        Args:
+            question: 用户问题
+            seed_entities: 种子实体列表
+            max_hops: 最大跳数
+
+        Returns:
+            推理结果包含路径、中间实体、推理链
+        """
+        if not seed_entities or not self.llm_client:
+            return {"paths": [], "reasoning_chain": [], "confidence": 0.0}
+
+        try:
+            # 1. 生成多跳查询
+            cypher = self.find_relationship_path(seed_entities[0], seed_entities[-1] if len(seed_entities) > 1 else seed_entities[0], max_hops)
+
+            # 2. 执行查询
+            from src.knowledge_graph.query_interface import QueryInterface
+            query_interface = QueryInterface()
+            results = query_interface.execute_custom_query(cypher)
+
+            # 3. 使用 LLM 分析路径
+            if results:
+                analysis = self._analyze_paths_with_llm(question, results, seed_entities)
+                return analysis
+
+            return {"paths": [], "reasoning_chain": [], "confidence": 0.0}
+
+        except Exception as e:
+            logger.error(f"Multi-hop reasoning failed: {e}")
+            return {"paths": [], "reasoning_chain": [], "confidence": 0.0, "error": str(e)}
+
+    def _analyze_paths_with_llm(self, question: str, paths: List, seed_entities: List[str]) -> Dict[str, Any]:
+        """使用 LLM 分析推理路径"""
+        try:
+            system_prompt = """你是知识图谱多跳推理专家。分析实体之间的连接路径，提取有意义的推理链。
+
+任务:
+1. 识别路径中的关键中间实体
+2. 提取推理链 (A→B→C 的逻辑关系)
+3. 评估推理的置信度
+4. 用中文解释推理过程
+
+输出 JSON 格式:
+{
+    "paths": [{"path": "A→B→C", "hops": 2, "intermediate_entities": ["B"]}],
+    "reasoning_chain": ["步骤 1 解释", "步骤 2 解释"],
+    "confidence": 0.85,
+    "explanation": "中文推理说明"
+}
+"""
+
+            paths_text = "\n".join([str(p) for p in paths[:5]])
+            prompt = f"""问题：{question}
+种子实体：{', '.join(seed_entities)}
+
+找到的路径:
+{paths_text}
+
+分析结果 (JSON 格式):"""
+
+            response = self._call_llm(prompt, system_prompt)
+
+            import json
+            import re
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+
+            return {"paths": paths, "reasoning_chain": [], "confidence": 0.5}
+
+        except Exception as e:
+            logger.warning(f"LLM path analysis failed: {e}")
+            return {"paths": paths, "reasoning_chain": [], "confidence": 0.3}
+
+    def answer_hypothetical_question(self, question: str, context: Dict) -> Dict[str, Any]:
+        """
+        回答假设性问题 (What-if 分析)
+
+        Args:
+            question: 假设性问题
+            context: 背景知识上下文
+
+        Returns:
+            假设性推理结果
+        """
+        if not self.llm_client:
+            return {
+                "answer": "假设性推理需要 LLM 支持，当前不可用。",
+                "reasoning": [],
+                "confidence": 0.0
+            }
+
+        try:
+            system_prompt = """你是假设性推理专家。基于知识图谱的背景知识，回答"如果...会怎样"类型的问题。
+
+推理方法:
+1. 识别假设条件
+2. 基于图谱中的因果关系进行推演
+3. 考虑直接影响和间接影响
+4. 评估不确定性和风险
+
+输出格式:
+{
+    "assumption": "识别的假设条件",
+    "direct_effects": ["直接影响 1", "直接影响 2"],
+    "indirect_effects": ["间接影响 1", "间接影响 2"],
+    "reasoning_chain": ["推理步骤 1", "推理步骤 2"],
+    "confidence": 0.x,
+    "uncertainties": ["不确定性 1", "不确定性 2"]
+}
+"""
+
+            context_text = json.dumps(context, ensure_ascii=False, indent=2) if context else "无背景知识"
+            prompt = f"""背景知识:
+{context_text}
+
+假设性问题：{question}
+
+推理结果 (JSON 格式):"""
+
+            response = self._call_llm(prompt, system_prompt)
+
+            import json
+            import re
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group())
+                result["answer"] = self._format_hypothetical_answer(result)
+                return result
+
+            return {"answer": response, "reasoning": [], "confidence": 0.3}
+
+        except Exception as e:
+            logger.error(f"Hypothetical reasoning failed: {e}")
+            return {"answer": f"推理失败：{str(e)}", "reasoning": [], "confidence": 0.0}
+
+    def _format_hypothetical_answer(self, result: Dict) -> str:
+        """格式化假设性答案"""
+        lines = ["基于知识图谱的假设性推理："]
+
+        if 'assumption' in result:
+            lines.append(f"\n**假设条件**: {result['assumption']}")
+
+        if 'direct_effects' in result:
+            lines.append(f"\n**直接影响**:")
+            for effect in result['direct_effects'][:5]:
+                lines.append(f"  - {effect}")
+
+        if 'indirect_effects' in result:
+            lines.append(f"\n**间接影响**:")
+            for effect in result['indirect_effects'][:5]:
+                lines.append(f"  - {effect}")
+
+        if 'uncertainties' in result:
+            lines.append(f"\n**不确定性**:")
+            for u in result['uncertainties'][:3]:
+                lines.append(f"  - {u}")
+
+        if 'confidence' in result:
+            lines.append(f"\n\n置信度：{result['confidence']:.0%}")
+
+        return "\n".join(lines)
+
+    def compare_entities(self, entities: List[str], comparison_aspects: List[str],
+                          context: Dict) -> Dict[str, Any]:
+        """
+        实体比较分析
+
+        Args:
+            entities: 要比较的实体列表
+            comparison_aspects: 比较维度
+            context: 图谱上下文
+
+        Returns:
+            比较结果
+        """
+        if not self.llm_client:
+            return {"comparison": "比较功能需要 LLM 支持", "aspects": []}
+
+        try:
+            system_prompt = """你是实体比较分析专家。基于知识图谱数据，多维度比较实体。
+
+输出格式:
+{
+    "entities_compared": ["实体 A", "实体 B"],
+    "comparison_table": {
+        "维度 1": {"实体 A": "值", "实体 B": "值", "analysis": "分析"},
+        "维度 2": {"实体 A": "值", "实体 B": "值", "analysis": "分析"}
+    },
+    "summary": "总体比较总结",
+    "key_differences": ["关键差异 1", "关键差异 2"],
+    "confidence": 0.x
+}
+"""
+
+            entities_text = ", ".join(entities)
+            aspects_text = ", ".join(comparison_aspects) if comparison_aspects else "通用维度"
+            context_text = json.dumps(context, ensure_ascii=False, indent=2)[:2000]
+
+            prompt = f"""比较实体：{entities_text}
+比较维度：{aspects_text}
+
+图谱上下文:
+{context_text}
+
+比较结果 (JSON 格式):"""
+
+            response = self._call_llm(prompt, system_prompt)
+
+            import json
+            import re
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+
+            return {"comparison": response, "aspects": []}
+
+        except Exception as e:
+            logger.error(f"Entity comparison failed: {e}")
+            return {"comparison": f"比较失败：{str(e)}", "aspects": []}
