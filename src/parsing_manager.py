@@ -857,6 +857,11 @@ class ParsingManager:
                         import time
                         time.sleep(0.1)
 
+            # Check if task was cancelled before checking result
+            if self._is_cancelled(task_id):
+                logger.info(f"Task {task_id} cancelled during parsing, skipping result check for {filename}")
+                return
+
             # Check if parsing was successful
             if not result.get('success', False):
                 error_msg = result.get('error', 'Unknown parsing error')
