@@ -674,6 +674,35 @@ class ParsingManager:
         graph_dir = os.path.join(self.parsed_data_folder, 'graph_builds')
         return os.path.join(graph_dir, f"{safe_name}_graph.json")
 
+    def get_graph_path(self, filename: str) -> str:
+        """
+        Get path for graph data file (alias for get_graph_building_path).
+
+        Args:
+            filename: Name of the file
+
+        Returns:
+            Path to graph data file
+        """
+        return self.get_graph_building_path(filename)
+
+    def get_parsing_state_path(self, filename: str) -> str:
+        """
+        Get path for parsing state file.
+
+        Args:
+            filename: Name of the file
+
+        Returns:
+            Path to parsing state file
+        """
+        # Create a safe filename for state
+        base_name = os.path.splitext(filename)[0]
+        safe_name = ''.join(c if c.isalnum() else '_' for c in base_name)
+        state_dir = os.path.join(self.parsed_data_folder, 'parsing_states')
+        os.makedirs(state_dir, exist_ok=True)
+        return os.path.join(state_dir, f"{safe_name}_state.json")
+
     # Progress tracking methods
     def parse_file_async(self, filename: str, progress_callback: Optional[Callable] = None,
                         extraction_method: str = 'spacy') -> str:

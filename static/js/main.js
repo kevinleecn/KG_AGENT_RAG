@@ -535,6 +535,11 @@ $(document).ready(function() {
                        download="${fileName}" title="Download" onclick="event.stopPropagation();">
                         <i class="fas fa-download"></i>
                     </a>
+                    <button class="btn btn-sm btn-outline-danger delete-file-btn"
+                            title="Delete file from server"
+                            onclick="event.stopPropagation();">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
                 </div>
                 <!-- Progress container (hidden by default) -->
                 <div class="file-progress-container mt-2 d-none">
@@ -1017,6 +1022,67 @@ $(document).ready(function() {
 
         // Update current document for chat
         currentDocument = filename;
+    });
+
+    // Handle delete file button clicks
+    console.log('Binding delete-file-btn click handler');
+    $(document).on('click', '.delete-file-btn', function(e) {
+        e.stopPropagation();
+
+        const $fileItem = $(this).closest('.uploaded-file-item');
+        const filename = $fileItem.data('filename');
+        console.log('Delete file clicked:', filename);
+
+        // Confirm deletion
+        if (!confirm(`Are you sure you want to delete "${filename}"?\n\nThis will also delete all parsed data and knowledge graph data associated with this file.`)) {
+            return;
+        }
+
+        // Disable button and show loading state
+        const $button = $(this);
+        $button.prop('disabled', true);
+        $button.html('<i class="fas fa-spinner fa-spin"></i>');
+
+        console.log('Sending delete request for:', filename);
+        $.ajax({
+            url: `/api/files/${encodeURIComponent(filename)}`,
+            type: 'DELETE',
+            contentType: 'application/json',
+            success: function(response) {
+                console.log('Delete success:', response);
+                if (response.success) {
+                    // Remove file item from list with animation
+                    $fileItem.addClass('fade');
+                    $fileItem.css('opacity', '0');
+                    $fileItem.css('transition', 'opacity 0.3s ease');
+
+                    setTimeout(() => {
+                        $fileItem.remove();
+
+                        // Refresh file list to update counts
+                        loadUploadedFiles();
+
+                        showAlert('success', `File "${filename}" deleted successfully.`);
+                    }, 300);
+                } else {
+                    showAlert('danger', `Failed to delete "${filename}": ${response.error || 'Unknown error'}`);
+                    $button.prop('disabled', false);
+                    $button.html('<i class="fas fa-trash-alt"></i>');
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'Failed to delete file. Please try again.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMessage = response.error || errorMessage;
+                } catch (e) {
+                    // Use default error message
+                }
+                showAlert('danger', errorMessage);
+                $button.prop('disabled', false);
+                $button.html('<i class="fas fa-trash-alt"></i>');
+            }
+        });
     });
 
     // ====================

@@ -222,6 +222,89 @@ def list_files():
         logger.error(f"Error listing files: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/api/files/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    """Delete an uploaded file and all associated data"""
+    try:
+        upload_folder = app.config['UPLOAD_FOLDER']
+        filepath = os.path.join(upload_folder, filename)
+
+        # Check if file exists
+        if not os.path.exists(filepath):
+            return jsonify({
+                'success': False,
+                'error': f'File not found: {filename}'
+            }), 404
+
+        # Verify it's a file, not a directory
+        if not os.path.isfile(filepath):
+            return jsonify({
+                'success': False,
+                'error': f'Not a file: {filename}'
+            }), 400
+
+        # Delete associated parsed data
+        try:
+            parsed_text_path = parsing_manager.get_parsed_text_path(filename)
+            if os.path.exists(parsed_text_path):
+                os.remove(parsed_text_path)
+                logger.info(f"Deleted parsed text: {parsed_text_path}")
+        except Exception as e:
+            logger.warning(f"Failed to delete parsed text: {e}")
+
+        # Delete associated knowledge extraction data
+        try:
+            extraction_path = parsing_manager.get_knowledge_extraction_path(filename)
+            if os.path.exists(extraction_path):
+                os.remove(extraction_path)
+                logger.info(f"Deleted knowledge extraction: {extraction_path}")
+        except Exception as e:
+            logger.warning(f"Failed to delete knowledge extraction: {e}")
+
+        # Delete associated graph data
+        try:
+            graph_path = parsing_manager.get_graph_path(filename)
+            if os.path.exists(graph_path):
+                os.remove(graph_path)
+                logger.info(f"Deleted graph data: {graph_path}")
+        except Exception as e:
+            logger.warning(f"Failed to delete graph data: {e}")
+
+        # Delete parsing state file
+        try:
+            state_path = parsing_manager.get_parsing_state_path(filename)
+            if os.path.exists(state_path):
+                os.remove(state_path)
+                logger.info(f"Deleted parsing state: {state_path}")
+        except Exception as e:
+            logger.warning(f"Failed to delete parsing state: {e}")
+
+        # Delete the uploaded file
+        os.remove(filepath)
+        logger.info(f"Deleted uploaded file: {filepath}")
+
+        # Delete from Neo4j (optional - if graph was built)
+        try:
+            parsing_manager.graph_db.delete_document_graph(filename)
+            logger.info(f"Deleted Neo4j entities for document: {filename}")
+        except Exception as e:
+            logger.warning(f"Failed to delete Neo4j entities: {e}")
+
+        return jsonify({
+            'success': True,
+            'message': f'File "{filename}" and all associated data deleted successfully',
+            'filename': filename
+        })
+
+    except Exception as e:
+        logger.error(f"Error deleting file {filename}: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Failed to delete file: {str(e)}'
+        }), 500
+
+
 def _format_file_size(size_bytes):
     """Format file size in human readable format"""
     if size_bytes == 0:
@@ -235,6 +318,7 @@ def _format_file_size(size_bytes):
         unit_index += 1
 
     return f"{size_bytes:.2f} {units[unit_index]}"
+
 
 def _format_timestamp(timestamp):
     """Format timestamp to readable date"""
