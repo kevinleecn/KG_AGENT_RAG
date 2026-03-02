@@ -209,7 +209,7 @@ $(document).ready(function() {
 
         // Disable upload button and show loading state
         $uploadBtn.prop('disabled', true);
-        $uploadBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Uploading...');
+        $uploadBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>正在上传...');
 
         // Create FormData
         const formData = new FormData();
@@ -230,7 +230,7 @@ $(document).ready(function() {
             success: handleUploadSuccess,
             error: handleUploadError,
             complete: function() {
-                $uploadBtn.html('<i class="fas fa-upload me-2"></i>Upload Files');
+                $uploadBtn.html('<i class="fas fa-upload me-2"></i>上传文件');
                 $('.file-list-item').removeClass('uploading');
             }
         });
@@ -708,7 +708,7 @@ $(document).ready(function() {
      */
     function handleParsingError($fileItem, progress) {
         const filename = $fileItem.data('filename');
-        const errorMessage = progress.error || 'Parsing failed';
+        const errorMessage = progress.error || '解析失败';
 
         // Hide progress container
         $fileItem.find('.file-progress-container').addClass('d-none').empty();
@@ -878,7 +878,7 @@ $(document).ready(function() {
         const $button = $(this);
         const originalButtonHtml = $button.html();
         $button.prop('disabled', true);
-        $button.html('<i class="fas fa-spinner fa-spin"></i> Parsing...');
+        $button.html('<i class="fas fa-spinner fa-spin"></i> 正在解析...');
 
         console.log('Sending async parse request for:', filename);
         // Send async parse request with extraction method
@@ -931,10 +931,10 @@ $(document).ready(function() {
                                          aria-valuenow="50"
                                          aria-valuemin="0"
                                          aria-valuemax="100">
-                                        50% - Processing
+                                        50% - 处理中
                                     </div>
                                 </div>
-                                <small class="text-muted">Parsing in progress (progress tracking error)</small>
+                                <small class="text-muted">解析进行中（进度跟踪错误）</small>
                             `);
                         }
                     } else {
@@ -952,7 +952,7 @@ $(document).ready(function() {
                                     50% - Processing
                                 </div>
                             </div>
-                            <small class="text-muted">Parsing in progress (progress tracking unavailable)</small>
+                            <small class="text-muted">解析进行中（进度跟踪不可用）</small>
                         `);
                     }
 
@@ -962,7 +962,7 @@ $(document).ready(function() {
                         filename: filename,
                         status: 'pending',
                         progress: 0.1,
-                        step_description: 'Starting parsing process...'
+                        step_description: '正在启动解析流程...'
                     });
 
                     showAlert('info', `已开始解析 "${filename}"。进度将在下方显示。`);
@@ -1159,11 +1159,11 @@ $(document).ready(function() {
                     chatHistory.push({ role: 'user', content: message });
                     chatHistory.push({ role: 'assistant', content: response.answer });
                 } else {
-                    addMessage('assistant', `Error: ${response.error}`);
+                    addMessage('assistant', `错误：${response.error}`);
                 }
             },
             error: function() {
-                addMessage('assistant', 'Sorry, there was an error processing your question.');
+                addMessage('assistant', '抱歉，处理您的问题时发生错误。');
             }
         });
     }

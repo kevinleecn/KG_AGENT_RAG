@@ -425,7 +425,7 @@ class ProgressTracker {
             const escapedError = escapeHtml(progress.error);
             errorHtml = `
                 <div class="mt-2">
-                    <h6 class="text-danger">Error:</h6>
+                    <h6 class="text-danger">错误：</h6>
                     <div class="alert alert-danger small">${escapedError}</div>
                 </div>
             `;
@@ -707,18 +707,18 @@ function updateListGroupItemProgressUI(fileListItem, progress) {
  * @param {string} filename - Filename for UI updates
  */
 function cancelParsing(taskId, filename) {
-    if (!confirm('Are you sure you want to cancel this parsing task?')) {
+    if (!confirm('您确定要取消此解析任务吗？')) {
         return;
     }
 
     window.progressTracker.cancelTask(taskId)
         .then(() => {
-            showAlert('Parsing cancelled successfully', 'success');
+            showAlert('解析已成功取消。', 'success');
             // UI will update via progress polling
         })
         .catch(error => {
             console.error('Failed to cancel parsing:', error);
-            showAlert(`Failed to cancel parsing: ${error.message}`, 'danger');
+            showAlert(`取消解析失败：${error.message}`, 'danger');
         });
 }
 
