@@ -605,7 +605,7 @@ $(document).ready(function() {
                 $('#graphPreviewContainer').html(
                     '<div class="text-center p-5 text-muted">' +
                     '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>' +
-                    'Failed to render graph. Check console for details.' +
+                    '渲染图谱失败。请检查控制台详情。' +
                     '</div>'
                 );
             }
@@ -730,7 +730,7 @@ $(document).ready(function() {
                 $('#graphPreviewContainer').html(
                     '<div class="text-center p-5 text-muted">' +
                     '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>' +
-                    'Failed to load graph data. Please try again.' +
+                    '加载图谱数据失败。请重试。' +
                     '</div>'
                 );
             }
@@ -856,15 +856,15 @@ $(document).ready(function() {
                 console.error('Error loading graph data:', status, error, xhr.status);
                 console.error('Response text:', xhr.responseText);
 
-                let errorMessage = 'Failed to load graph data. Please try again.';
+                let errorMessage = '加载图谱数据失败。请重试。';
                 if (xhr.status === 404) {
-                    errorMessage = 'Document not found or no graph data available.';
+                    errorMessage = '文档未找到或没有图谱数据。';
                 } else if (xhr.status === 403) {
-                    errorMessage = 'Access denied. Please check permissions.';
+                    errorMessage = '访问被拒绝。请检查权限。';
                 } else if (xhr.status === 500) {
-                    errorMessage = 'Server error occurred. Please try again later.';
+                    errorMessage = '服务器错误。请稍后重试。';
                 } else if (xhr.status === 0) {
-                    errorMessage = 'Network error. Please check your connection.';
+                    errorMessage = '网络错误。请检查连接。';
                 }
 
                 showEmptyNodesState(errorMessage, filename);
