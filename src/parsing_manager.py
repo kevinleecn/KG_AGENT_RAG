@@ -1042,6 +1042,19 @@ class ParsingManager:
                 message=f"Successfully parsed {filename} ({text_length} chars, {word_count} words)"
             )
 
+            # 保存提取方法到文件状态
+            self.update_file_state(
+                filename,
+                parsed=True,
+                parsed_at=datetime.now().isoformat(),
+                text_length=text_length,
+                word_count=word_count,
+                metadata={
+                    'extraction_method': extraction_method,
+                    **result_data
+                }
+            )
+
             logger.info(f"Full pipeline completed for {filename}")
 
         except Exception as e:

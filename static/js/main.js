@@ -216,6 +216,8 @@ $(document).ready(function() {
         selectedFiles.forEach(file => {
             formData.append('files', file);
         });
+        // 传递当前选择的提取方法
+        formData.append('extraction_method', currentExtractionMethod);
 
         // Update UI to show uploading state
         $('.file-list-item').addClass('uploading');

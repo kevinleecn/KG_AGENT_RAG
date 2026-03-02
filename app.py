@@ -65,6 +65,11 @@ def upload_file():
 
         files = request.files.getlist('files')
 
+        # 获取提取方法参数（默认为 spacy）
+        extraction_method = request.form.get('extraction_method', 'spacy')
+        if extraction_method not in ['spacy', 'llm']:
+            extraction_method = 'spacy'
+
         # Check if at least one file is selected
         if not files or files[0].filename == '':
             return jsonify({'error': 'No selected files'}), 400
@@ -95,15 +100,15 @@ def upload_file():
                 })
                 logger.info(f"Uploaded file: {filename}")
 
-                # Start async parsing automatically after upload
+                # Start async parsing automatically after upload with extraction method
                 try:
-                    task_id = parsing_manager.parse_file_async(filename)
+                    task_id = parsing_manager.parse_file_async(filename, extraction_method=extraction_method)
                     parsing_tasks.append({
                         'filename': filename,
                         'task_id': task_id,
                         'progress_url': f'/progress/{task_id}'
                     })
-                    logger.info(f"Started async parsing for {filename} with task ID: {task_id}")
+                    logger.info(f"Started async parsing for {filename} with task ID: {task_id}, method: {extraction_method}")
                 except Exception as parse_error:
                     logger.error(f"Error starting async parsing for {filename}: {str(parse_error)}")
                     # Fall back to sync parsing if async fails
