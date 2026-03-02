@@ -881,7 +881,7 @@ class ParsingManager:
             )
 
             # Check if task was cancelled before saving results
-            if self._is_task_cancelled(task_id):
+            if self._is_cancelled(task_id):
                 logger.info(f"Task {task_id} cancelled after parsing, skipping save for {filename}")
                 return
 
