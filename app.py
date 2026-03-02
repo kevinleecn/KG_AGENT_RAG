@@ -720,40 +720,37 @@ def chat_ask():
 @app.route('/chat/ask-enhanced', methods=['POST'])
 def chat_ask_enhanced():
     """
-    增强版问答接口（支持深度推理）
+    融合问答接口 - 真正的 KG-LLM 融合推理
 
     功能:
-    - LLM 深度意图分析
-    - 混合检索策略
-    - 神经符号推理
-    - 可解释答案生成
+    - 智能问题分类（图谱内/外/融合）
+    - 图谱外问题直接用 LLM 回答
+    - 图谱内问题用图谱数据增强
+    - 融合问题结合图谱检索和 LLM 推理
 
     参数:
     - question: 用户问题
     - document_id: 可选文档 ID
     - chat_history: 聊天历史
-    - reasoning_depth: 推理深度 ("fast", "standard", "deep")
     """
     try:
         data = request.get_json()
         question = data.get('question')
         document_id = data.get('document_id')
         chat_history = data.get('chat_history', [])
-        reasoning_depth = data.get('reasoning_depth', 'standard')
 
         if not question:
             return jsonify({'success': False, 'error': 'No question provided'}), 400
 
-        # 初始化增强问答引擎
-        from src.qa.hybrid_qa_engine import HybridKGQAEngine
-        qa_engine = HybridKGQAEngine()
+        # 初始化融合问答引擎
+        from src.qa.fusion_qa_engine import FusionKGQAEngine
+        qa_engine = FusionKGQAEngine()
 
-        # 获取完整响应（包含答案、证据、推理链）
+        # 获取完整响应
         response = qa_engine.ask_question(
             question=question,
             document_id=document_id,
-            chat_history=chat_history,
-            reasoning_depth=reasoning_depth
+            chat_history=chat_history
         )
 
         return jsonify(response)
@@ -763,6 +760,24 @@ def chat_ask_enhanced():
         return jsonify({
             'success': False,
             'answer': f'处理问题时发生错误：{str(e)}',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/chat/assistant-info', methods=['GET'])
+def chat_assistant_info():
+    """获取助手信息（模型、能力等）"""
+    try:
+        from src.qa.fusion_qa_engine import FusionKGQAEngine
+        engine = FusionKGQAEngine()
+        info = engine.get_assistant_info()
+        return jsonify({
+            'success': True,
+            'assistant': info
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
             'error': str(e)
         }), 500
 
