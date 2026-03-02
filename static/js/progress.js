@@ -582,7 +582,8 @@ function updateListGroupItemProgressUI(fileListItem, progress) {
         actionHtml = `
             <div class="mt-2">
                 <button class="btn btn-sm btn-outline-danger cancel-parsing-btn"
-                        data-task-id="${escapedTaskId}">
+                        data-task-id="${escapedTaskId}"
+                        onclick="cancelParsing('${escapedTaskId}', '${escapeHtml(progress.filename)}'); event.stopPropagation();">
                     <i class="fas fa-times me-1"></i>Cancel
                 </button>
             </div>
@@ -707,12 +708,15 @@ function updateListGroupItemProgressUI(fileListItem, progress) {
  * @param {string} filename - Filename for UI updates
  */
 function cancelParsing(taskId, filename) {
+    console.log(`cancelParsing called with taskId: ${taskId}, filename: ${filename}`);
     if (!confirm('您确定要取消此解析任务吗？')) {
         return;
     }
 
+    console.log(`Sending cancel request for task ${taskId}`);
     window.progressTracker.cancelTask(taskId)
         .then(() => {
+            console.log(`Cancel successful for task ${taskId}`);
             showAlert('解析已成功取消。', 'success');
             // UI will update via progress polling
         })
