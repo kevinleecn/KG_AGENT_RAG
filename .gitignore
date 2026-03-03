@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+# IMPORTANT: Clean bytecode before publishing - may contain sensitive strings from source
 build/
 develop-eggs/
 dist/
