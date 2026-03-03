@@ -27,13 +27,13 @@
 
 ## 配置信息
 
-```python
-# config/settings.py
-OPENAI_API_KEY = 'sk-0b0a00b2d4cc4d7d8dce645d5db1b739'
-LLM_BACKEND = 'openai'
-LLM_MODEL = 'deepseek-chat'  # DeepSeek-V3.2
-OPENAI_BASE_URL = 'https://api.deepseek.com'
-```
+**重要**: 敏感配置信息（API Key、密码等）现在通过 Web 界面设置，加密存储在 `config/user_config.json` 文件中。
+
+访问 http://localhost:5000/settings 进行配置：
+- LLM API Base URL、API Key
+- Neo4j 连接地址、用户名、密码
+
+或者参考 `.env.example` 文件创建 `.env` 文件配置环境变量。
 
 ## 使用方法
 

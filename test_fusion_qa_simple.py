@@ -8,9 +8,15 @@ import io
 # 设置 UTF-8 编码输出
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-os.environ['OPENAI_API_KEY'] = 'sk-0b0a00b2d4cc4d7d8dce645d5db1b739'
-os.environ['NEO4J_USER'] = 'neo4j'
-os.environ['NEO4J_PASSWORD'] = 'neo4j168'
+# 从配置管理器加载配置
+from config.config_manager import get_config_manager
+config_manager = get_config_manager()
+llm_config = config_manager.get_llm_config()
+neo4j_config = config_manager.get_neo4j_config()
+
+os.environ['OPENAI_API_KEY'] = llm_config.get('api_key', 'your-api-key')
+os.environ['NEO4J_USER'] = neo4j_config.get('username', 'neo4j')
+os.environ['NEO4J_PASSWORD'] = neo4j_config.get('password', 'your-password')
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

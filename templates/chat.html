@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block title %}智能问答{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-comments me-2"></i>智能问答
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-robot me-2"></i>知识图谱助手
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-light" id="clearChatBtn" title="清除聊天记录">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        <span class="badge bg-info ms-2" id="questionTypeBadge">自动模式</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body chat-messages" id="chatMessages" style="height: 500px; overflow-y: auto;">
+                <!-- 欢迎消息 -->
+                <div class="message assistant-message">
+                    <div class="message-header">
+                        <i class="fas fa-robot me-2"></i>助手
+                        <span class="message-time text-muted ms-auto small">刚刚</span>
+                    </div>
+                    <div class="message-body">
+                        你好！我是知识图谱智能助手，可以帮你：
+                        <ul class="mt-2 mb-0">
+                            <li>🔍 <strong>知识图谱查询</strong> - 查找实体、关系和知识</li>
+                            <li>📄 <strong>文档内容问答</strong> - 基于上传的文档回答问题</li>
+                            <li>🔗 <strong>实体关系分析</strong> - 分析实体间的联系</li>
+                            <li>🧠 <strong>多跳推理</strong> - 进行多步逻辑推理</li>
+                        </ul>
+                        <p class="mt-2 mb-0">请随时提问！</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="input-group">
+                    <textarea class="form-control" id="chatInput"
+                              placeholder="请输入你的问题..."
+                              rows="2"
+                              onkeydown="if(event.keyCode===13 && !event.shiftKey){event.preventDefault(); sendMessage();}"></textarea>
+                    <button class="btn btn-primary" id="sendBtn">
+                        <i class="fas fa-paper-plane me-1"></i>发送
+                    </button>
+                </div>
+                <div class="form-text mt-2">
+                    <i class="fas fa-info-circle me-1"></i>
+                    按 Enter 发送，Shift+Enter 换行
+                </div>
+            </div>
+        </div>
+
+        <!-- 快捷问题 -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-bolt me-2"></i>快捷问题
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-outline-secondary btn-sm quick-question"
+                                    data-question="你是谁？">
+                                <i class="fas fa-user me-1"></i>你是谁？
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm quick-question"
+                                    data-question="不要用知识图谱，用 LLM 回答云储新能源是一家什么样的公司？">
+                                <i class="fas fa-brain me-1"></i>公司介绍 (LLM)
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm quick-question"
+                                    data-question="查询知识图谱中关于 Reasoning 的相关内容">
+                                <i class="fas fa-project-diagram me-1"></i>图谱查询
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm quick-question"
+                                    data-question="阿里巴巴的 CEO 是谁？">
+                                <i class="fas fa-search me-1"></i>事实查询
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm quick-question"
+                                    data-question="张三和李四有什么关系？">
+                                <i class="fas fa-users me-1"></i>关系分析
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 问答模式说明 -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-question-circle me-2"></i>问答模式说明
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><span class="badge bg-primary">LLM Only</span></h6>
+                                <p class="small text-muted mb-0">
+                                    通用知识、助手身份问题。例如："你是谁？"、"不要用知识图谱..."
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><span class="badge bg-success">KG Only</span></h6>
+                                <p class="small text-muted mb-0">
+                                    简单事实查询。例如："阿里巴巴的 CEO 是谁？"
+                                </p>
+                            </div>
+                            <div class="col-md-6 mt-2">
+                                <h6><span class="badge bg-info">KG-LLM Fusion</span></h6>
+                                <p class="small text-muted mb-0">
+                                    复杂推理问题。例如："张三和李四有什么关系？"
+                                </p>
+                            </div>
+                            <div class="col-md-6 mt-2">
+                                <h6><span class="badge bg-secondary">Chat</span></h6>
+                                <p class="small text-muted mb-0">
+                                    闲聊对话。例如："你好"、"谢谢"
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+let chatHistory = [];
+
+$(document).ready(function() {
+    // Load chat history from localStorage
+    const savedHistory = localStorage.getItem('chatHistory');
+    if (savedHistory) {
+        try {
+            chatHistory = JSON.parse(savedHistory);
+            renderChatHistory();
+        } catch (e) {
+            console.error('Failed to load chat history:', e);
+        }
+    }
+
+    // Send button click
+    $('#sendBtn').click(sendMessage);
+
+    // Clear chat button
+    $('#clearChatBtn').click(function() {
+        if (confirm('确定要清除聊天记录吗？')) {
+            chatHistory = [];
+            localStorage.removeItem('chatHistory');
+            $('#chatMessages').html(`
+                <div class="message assistant-message">
+                    <div class="message-header">
+                        <i class="fas fa-robot me-2"></i>助手
+                        <span class="message-time text-muted ms-auto small">刚刚</span>
+                    </div>
+                    <div class="message-body">
+                        聊天记录已清除。请问有什么可以帮你？
+                    </div>
+                </div>
+            `);
+        }
+    });
+
+    // Quick question buttons
+    $('.quick-question').click(function() {
+        const question = $(this).data('question');
+        $('#chatInput').val(question);
+        sendMessage();
+    });
+});
+
+function renderChatHistory() {
+    if (chatHistory.length === 0) return;
+
+    let html = '';
+    chatHistory.forEach(msg => {
+        html += createMessageHtml(msg.role, msg.content, msg.questionType);
+    });
+    $('#chatMessages').html(html);
+    scrollToBottom();
+}
+
+function sendMessage() {
+    const question = $('#chatInput').val().trim();
+    if (!question) return;
+
+    // Clear input
+    $('#chatInput').val('');
+
+    // Add user message to chat
+    chatHistory.push({ role: 'user', content: question });
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+
+    // Add user message to UI
+    $('#chatMessages').append(createMessageHtml('user', question));
+    scrollToBottom();
+
+    // Show loading indicator
+    const loadingId = 'loading-' + Date.now();
+    $('#chatMessages').append(`
+        <div class="message assistant-message" id="${loadingId}">
+            <div class="message-header">
+                <i class="fas fa-robot me-2"></i>助手
+                <span class="message-time text-muted ms-auto small">正在思考...</span>
+            </div>
+            <div class="message-body">
+                <div class="spinner-border spinner-border-sm me-2"></div>
+                正在思考中...
+            </div>
+        </div>
+    `);
+    scrollToBottom();
+
+    // Send to API
+    $.ajax({
+        url: '/chat/ask-enhanced',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            question: question,
+            chat_history: chatHistory.slice(-10)  // Last 10 messages
+        }),
+        success: function(response) {
+            $(`#${loadingId}`).remove();
+
+            if (response.success) {
+                const answer = response.answer;
+                const questionType = response.metadata?.question_type || 'unknown';
+
+                // Add to history
+                chatHistory.push({
+                    role: 'assistant',
+                    content: answer,
+                    questionType: questionType
+                });
+                localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+
+                // Add to UI
+                $('#chatMessages').append(createMessageHtml('assistant', answer, questionType));
+
+                // Update badge
+                updateQuestionTypeBadge(questionType);
+            } else {
+                $(`#${loadingId}`).remove();
+                $('#chatMessages').append(createMessageHtml('assistant', '抱歉，回答出错：' + (response.error || '未知错误')));
+            }
+            scrollToBottom();
+        },
+        error: function(xhr) {
+            $(`#${loadingId}`).remove();
+            const error = xhr.responseJSON?.error || '请求失败，请稍后重试';
+            $('#chatMessages').append(createMessageHtml('assistant', '抱歉，回答出错：' + error));
+            scrollToBottom();
+        }
+    });
+}
+
+function createMessageHtml(role, content, questionType = null) {
+    const icons = {
+        'user': '<i class="fas fa-user me-2"></i>',
+        'assistant': '<i class="fas fa-robot me-2"></i>'
+    };
+
+    const names = {
+        'user': '你',
+        'assistant': '助手'
+    };
+
+    const badges = {
+        'llm_only': '<span class="badge bg-primary ms-2">LLM</span>',
+        'kg_only': '<span class="badge bg-success ms-2">图谱查询</span>',
+        'kg_llm_fusion': '<span class="badge bg-info ms-2">融合推理</span>',
+        'chat': '<span class="badge bg-secondary ms-2">闲聊</span>'
+    };
+
+    // Parse markdown-like content (simple conversion)
+    let formattedContent = content
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+
+    const badge = questionType ? (badges[questionType] || '') : '';
+    const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+    return `
+        <div class="message ${role === 'user' ? 'user-message' : 'assistant-message'}">
+            <div class="message-header">
+                ${icons[role]}${names[role]}
+                ${badge}
+                <span class="message-time text-muted ms-auto small">${time}</span>
+            </div>
+            <div class="message-body">
+                ${formattedContent}
+            </div>
+        </div>
+    `;
+}
+
+function updateQuestionTypeBadge(type) {
+    const badges = {
+        'llm_only': { text: 'LLM 回答', class: 'bg-primary' },
+        'kg_only': { text: '图谱查询', class: 'bg-success' },
+        'kg_llm_fusion': { text: '融合推理', class: 'bg-info' },
+        'chat': { text: '闲聊', class: 'bg-secondary' }
+    };
+
+    const badge = badges[type] || { text: '自动', class: 'bg-secondary' };
+    $('#questionTypeBadge')
+        .text(badge.text)
+        .removeClass('bg-primary bg-success bg-info bg-secondary')
+        .addClass(badge.class);
+}
+
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+</script>
+
+<style>
+.message {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.user-message {
+    background-color: #e3f2fd;
+    border-left: 3px solid #2196f3;
+}
+
+.assistant-message {
+    background-color: #f5f5f5;
+    border-left: 3px solid #4caf50;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.message-body {
+    line-height: 1.6;
+}
+
+.chat-messages {
+    background-color: #fafafa;
+}
+</style>
+{% endblock %}

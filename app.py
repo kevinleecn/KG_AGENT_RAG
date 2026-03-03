@@ -1,26 +1,42 @@
 """
 Knowledge Graph Document QA Demo System - Main Application
 Phase 2: Document Parsing System
+
+Configuration is now managed through the web interface and stored securely:
+- LLM API settings (Base URL, API Key) are encrypted
+- Neo4j connection settings (URI, Username, Password) are encrypted
+- Configuration file: config/user_config.json
+- Encryption key: config/.encryption_key
+
+DO NOT hardcode sensitive credentials in this file!
 """
 
-import os
-# Set environment variables for Neo4j
-os.environ["NEO4J_PASSWORD"] = "neo4j168"
-os.environ["NEO4J_USER"] = "neo4j"
+# Initialize configuration manager first
+config_manager = get_config_manager()
 
-# Set environment variables for LLM (DeepSeek V3.2)
-os.environ["OPENAI_API_KEY"] = "sk-0b0a00b2d4cc4d7d8dce645d5db1b739"
-os.environ["OPENAI_BASE_URL"] = "https://api.deepseek.com"
-os.environ["LLM_BACKEND"] = "openai"
-os.environ["LLM_MODEL"] = "deepseek-chat"  # DeepSeek-V3.2 uses deepseek-chat endpoint
+# Load configuration and set environment variables
+llm_config = config_manager.get_llm_config()
+neo4j_config = config_manager.get_neo4j_config()
 
-print(f"[APP DEBUG] Environment NEO4J_USER: {os.environ.get('NEO4J_USER')}")
-print(f"[APP DEBUG] Environment NEO4J_PASSWORD: {'*' * len(os.environ.get('NEO4J_PASSWORD', '')) if os.environ.get('NEO4J_PASSWORD') else 'None'}")
+os.environ["NEO4J_URI"] = neo4j_config.get('uri', 'bolt://localhost:7687')
+os.environ["NEO4J_USER"] = neo4j_config.get('username', 'neo4j')
+os.environ["NEO4J_PASSWORD"] = neo4j_config.get('password', '')
+
+os.environ["OPENAI_API_KEY"] = llm_config.get('api_key', '')
+os.environ["OPENAI_BASE_URL"] = llm_config.get('base_url', 'https://api.deepseek.com')
+os.environ["LLM_BACKEND"] = llm_config.get('backend', 'openai')
+os.environ["LLM_MODEL"] = llm_config.get('model', 'deepseek-chat')
+
+logger.info(f"[Config] Neo4j URI: {os.environ.get('NEO4J_URI')}")
+logger.info(f"[Config] Neo4j User: {os.environ.get('NEO4J_USER')}")
+logger.info(f"[Config] LLM Backend: {os.environ.get('LLM_BACKEND')}")
+logger.info(f"[Config] LLM Model: {os.environ.get('LLM_MODEL')}")
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 import logging
 from config.settings import get_config
+from config.config_manager import get_config_manager
 from src.parsing_manager import ParsingManager
 from src.knowledge_graph.graph_builder import GraphBuilder
 from src.qa.kg_qa_engine import KGQAEngine
@@ -154,6 +170,192 @@ def uploaded_file(filename):
 def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'service': 'kg-qa-demo'})
+
+
+# ==================== Configuration Management API ====================
+
+@app.route('/api/config', methods=['GET'])
+def get_configuration():
+    """
+    Get current configuration (with masked sensitive fields).
+
+    Returns:
+        JSON response with configuration summary
+    """
+    try:
+        config_manager = get_config_manager()
+        summary = config_manager.get_config_summary()
+
+        return jsonify({
+            'success': True,
+            'config': summary,
+            'validation': config_manager.validate_config()
+        })
+    except Exception as e:
+        logger.error(f"Failed to get configuration: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/config', methods=['POST'])
+def save_configuration():
+    """
+    Save user configuration.
+
+    Request JSON:
+    {
+        "llm": {
+            "base_url": "https://api.deepseek.com",
+            "api_key": "sk-xxx",
+            "model": "deepseek-chat",
+            "backend": "openai"
+        },
+        "neo4j": {
+            "uri": "bolt://localhost:7687",
+            "username": "neo4j",
+            "password": "password123",
+            "database": "neo4j"
+        }
+    }
+
+    Returns:
+        JSON response with success status
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        config_manager = get_config_manager()
+
+        # Update configuration
+        config_manager.update_config(data)
+
+        # Reload environment variables for immediate effect
+        llm_config = config_manager.get_llm_config()
+        neo4j_config = config_manager.get_neo4j_config()
+
+        os.environ["NEO4J_URI"] = neo4j_config.get('uri', 'bolt://localhost:7687')
+        os.environ["NEO4J_USER"] = neo4j_config.get('username', 'neo4j')
+        os.environ["NEO4J_PASSWORD"] = neo4j_config.get('password', '')
+        os.environ["OPENAI_API_KEY"] = llm_config.get('api_key', '')
+        os.environ["OPENAI_BASE_URL"] = llm_config.get('base_url', 'https://api.deepseek.com')
+        os.environ["LLM_BACKEND"] = llm_config.get('backend', 'openai')
+        os.environ["LLM_MODEL"] = llm_config.get('model', 'deepseek-chat')
+
+        logger.info("Configuration updated successfully")
+
+        return jsonify({
+            'success': True,
+            'message': 'Configuration saved successfully',
+            'config': config_manager.get_config_summary()
+        })
+    except Exception as e:
+        logger.error(f"Failed to save configuration: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/config/validate', methods=['POST'])
+def validate_configuration():
+    """
+    Validate and test configuration by attempting connections.
+
+    Request JSON (optional test data):
+    {
+        "test_llm": true,
+        "test_neo4j": true
+    }
+
+    Returns:
+        JSON response with validation results
+    """
+    try:
+        data = request.get_json() or {}
+        config_manager = get_config_manager()
+        config = config_manager.get_config()
+
+        results = {
+            'llm': {'configured': False, 'reachable': False, 'error': None},
+            'neo4j': {'configured': False, 'reachable': False, 'error': None}
+        }
+
+        # Validate LLM configuration
+        llm_config = config.get('llm', {})
+        if llm_config.get('api_key'):
+            results['llm']['configured'] = True
+
+            if data.get('test_llm', True):
+                try:
+                    from openai import OpenAI
+                    client = OpenAI(
+                        api_key=llm_config['api_key'],
+                        base_url=llm_config.get('base_url', 'https://api.deepseek.com')
+                    )
+                    # Simple API call to test connection
+                    client.models.list()
+                    results['llm']['reachable'] = True
+                except Exception as e:
+                    results['llm']['error'] = str(e)
+                    logger.warning(f"LLM connection test failed: {e}")
+
+        # Validate Neo4j configuration
+        neo4j_config = config.get('neo4j', {})
+        if neo4j_config.get('password'):
+            results['neo4j']['configured'] = True
+
+            if data.get('test_neo4j', True):
+                try:
+                    from src.knowledge_graph.neo4j_adapter import Neo4jAdapter
+                    adapter = Neo4jAdapter(
+                        uri=neo4j_config.get('uri', 'bolt://localhost:7687'),
+                        user=neo4j_config.get('username', 'neo4j'),
+                        password=neo4j_config.get('password', ''),
+                        database=neo4j_config.get('database', 'neo4j')
+                    )
+                    # Test connection with a simple query
+                    adapter.query("RETURN 1")
+                    results['neo4j']['reachable'] = True
+                except Exception as e:
+                    results['neo4j']['error'] = str(e)
+                    logger.warning(f"Neo4j connection test failed: {e}")
+
+        all_passed = (
+            results['llm']['configured'] and
+            results['llm']['reachable'] and
+            results['neo4j']['configured'] and
+            results['neo4j']['reachable']
+        )
+
+        return jsonify({
+            'success': True,
+            'validation': results,
+            'all_passed': all_passed
+        })
+    except Exception as e:
+        logger.error(f"Configuration validation failed: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/config/reset', methods=['POST'])
+def reset_configuration():
+    """
+    Reset configuration to defaults.
+
+    Returns:
+        JSON response with success status
+    """
+    try:
+        config_manager = get_config_manager()
+        config_manager.reset_to_defaults()
+
+        logger.info("Configuration reset to defaults")
+
+        return jsonify({
+            'success': True,
+            'message': 'Configuration reset to defaults'
+        })
+    except Exception as e:
+        logger.error(f"Failed to reset configuration: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/files')
 def list_files():
@@ -606,6 +808,18 @@ def get_progress_for_file(filename):
 def graph_view():
     """Render graph visualization page."""
     return render_template('graph.html')
+
+
+@app.route('/settings')
+def settings_page():
+    """Render settings page."""
+    return render_template('settings.html')
+
+
+@app.route('/chat')
+def chat_page():
+    """Render chat page."""
+    return render_template('chat.html')
 
 
 @app.route('/graph/data')

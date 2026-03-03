@@ -65,3 +65,8 @@ nul
 # Uploaded files
 uploads/
 parsed_data/
+
+# Configuration files with sensitive data
+.env
+config/user_config.json
+config/.encryption_key

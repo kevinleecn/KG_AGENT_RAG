@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-cog me-2"></i>系统配置
+        </h2>
+    </div>
+</div>
+
+<!-- Configuration Status -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-robot me-2"></i>LLM API 配置
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>API 状态:</span>
+                    <span id="llm-status" class="badge bg-secondary">
+                        <i class="fas fa-circle-notch fa-spin me-1"></i>加载中...
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Base URL:</span>
+                    <span id="llm-base-url" class="text-muted">-</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>API Key:</span>
+                    <span id="llm-api-key" class="text-muted">-</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>模型:</span>
+                    <span id="llm-model" class="text-muted">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-database me-2"></i>Neo4j 配置
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>连接状态:</span>
+                    <span id="neo4j-status" class="badge bg-secondary">
+                        <i class="fas fa-circle-notch fa-spin me-1"></i>加载中...
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>URI:</span>
+                    <span id="neo4j-uri" class="text-muted">-</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>用户名:</span>
+                    <span id="neo4j-username" class="text-muted">-</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>密码:</span>
+                    <span id="neo4j-password" class="text-muted">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Form -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-robot me-2"></i>LLM API 设置
+            </div>
+            <div class="card-body">
+                <form id="llm-config-form">
+                    <div class="mb-3">
+                        <label for="llm-backend" class="form-label">
+                            <i class="fas fa-server me-1"></i>后端类型
+                        </label>
+                        <select class="form-select" id="llm-backend" required>
+                            <option value="openai">OpenAI 兼容 API</option>
+                            <option value="ollama">Ollama (本地)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="llm-base-url-input" class="form-label">
+                            <i class="fas fa-link me-1"></i>API Base URL
+                        </label>
+                        <input type="url" class="form-control" id="llm-base-url-input"
+                               placeholder="https://api.deepseek.com" required>
+                        <div class="form-text">
+                            DeepSeek: https://api.deepseek.com<br>
+                            OpenAI: https://api.openai.com/v1<br>
+                            Ollama: http://localhost:11434
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="llm-api-key-input" class="form-label">
+                            <i class="fas fa-key me-1"></i>API Key
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="llm-api-key-input"
+                                   placeholder="sk-..." required>
+                            <button class="btn btn-outline-secondary" type="button" id="toggle-api-key">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            您的 API Key 将被加密存储
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="llm-model-input" class="form-label">
+                            <i class="fas fa-brain me-1"></i>模型名称
+                        </label>
+                        <input type="text" class="form-control" id="llm-model-input"
+                               placeholder="deepseek-chat" value="deepseek-chat">
+                        <div class="form-text">
+                            DeepSeek: deepseek-chat<br>
+                            OpenAI: gpt-4, gpt-3.5-turbo<br>
+                            Ollama: llama2, mistral
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-database me-2"></i>Neo4j 数据库设置
+            </div>
+            <div class="card-body">
+                <form id="neo4j-config-form">
+                    <div class="mb-3">
+                        <label for="neo4j-uri-input" class="form-label">
+                            <i class="fas fa-bolt me-1"></i>连接 URI
+                        </label>
+                        <input type="text" class="form-control" id="neo4j-uri-input"
+                               placeholder="bolt://localhost:7687"
+                               value="bolt://localhost:7687" required>
+                        <div class="form-text">
+                            Bolt 协议：bolt://hostname:7687
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="neo4j-username-input" class="form-label">
+                            <i class="fas fa-user me-1"></i>用户名
+                        </label>
+                        <input type="text" class="form-control" id="neo4j-username-input"
+                               value="neo4j" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="neo4j-password-input" class="form-label">
+                            <i class="fas fa-lock me-1"></i>密码
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="neo4j-password-input"
+                                   placeholder="请输入 Neo4j 密码" required>
+                            <button class="btn btn-outline-secondary" type="button" id="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            您的密码将被加密存储
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="neo4j-database-input" class="form-label">
+                            <i class="fas fa-database me-1"></i>数据库名称
+                        </label>
+                        <input type="text" class="form-control" id="neo4j-database-input"
+                               value="neo4j">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <button type="button" class="btn btn-primary me-2" id="btn-save-config">
+                            <i class="fas fa-save me-1"></i>保存配置
+                        </button>
+                        <button type="button" class="btn btn-success me-2" id="btn-test-config">
+                            <i class="fas fa-plug me-1"></i>测试连接
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btn-reset-config">
+                            <i class="fas fa-undo me-1"></i>恢复默认
+                        </button>
+                    </div>
+                    <div id="save-status" class="text-muted"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-question-circle me-2"></i>帮助说明
+            </div>
+            <div class="card-body">
+                <h5>LLM API 配置</h5>
+                <ul>
+                    <li><strong>DeepSeek:</strong> 访问 <a href="https://platform.deepseek.com" target="_blank">DeepSeek 平台</a> 注册并获取 API Key</li>
+                    <li><strong>OpenAI:</strong> 访问 <a href="https://platform.openai.com" target="_blank">OpenAI 平台</a> 注册并获取 API Key</li>
+                    <li><strong>Ollama:</strong> 本地部署，访问 <a href="https://ollama.ai" target="_blank">Ollama 官网</a> 下载安装</li>
+                </ul>
+
+                <h5 class="mt-3">Neo4j 配置</h5>
+                <ul>
+                    <li><strong>本地安装:</strong> 访问 <a href="https://neo4j.com/download" target="_blank">Neo4j 下载</a> 安装桌面版</li>
+                    <li><strong>Neo4j Aura:</strong> 云端服务，访问 <a href="https://aura.neo4j.com" target="_blank">Neo4j Aura</a> 创建免费实例</li>
+                    <li>默认端口：7687 (Bolt), 7474 (Browser)</li>
+                    <li>默认用户名：neo4j</li>
+                </ul>
+
+                <h5 class="mt-3">安全说明</h5>
+                <ul>
+                    <li>所有敏感信息（API Key、密码）都使用 AES 加密存储</li>
+                    <li>加密密钥保存在 <code>config/.encryption_key</code></li>
+                    <li>请勿将加密密钥和配置文件上传到公开代码仓库</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+$(document).ready(function() {
+    // Load current configuration
+    loadConfiguration();
+
+    // Toggle API Key visibility
+    $('#toggle-api-key').click(function() {
+        const input = $('#llm-api-key-input');
+        const icon = $(this).find('i');
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+
+    // Toggle password visibility
+    $('#toggle-password').click(function() {
+        const input = $('#neo4j-password-input');
+        const icon = $(this).find('i');
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+
+    // Save configuration
+    $('#btn-save-config').click(function() {
+        saveConfiguration();
+    });
+
+    // Test configuration
+    $('#btn-test-config').click(function() {
+        testConfiguration();
+    });
+
+    // Reset configuration
+    $('#btn-reset-config').click(function() {
+        if (confirm('确定要恢复默认配置吗？当前配置将丢失。')) {
+            resetConfiguration();
+        }
+    });
+});
+
+function loadConfiguration() {
+    $.get('/api/config', function(response) {
+        if (response.success) {
+            const config = response.config;
+            const validation = response.validation;
+
+            // Update LLM status display
+            if (validation.llm_configured) {
+                $('#llm-status').html('<i class="fas fa-check-circle me-1"></i>已配置')
+                                 .removeClass('bg-secondary').addClass('bg-success');
+            } else {
+                $('#llm-status').html('<i class="fas fa-exclamation-circle me-1"></i>未配置')
+                                 .removeClass('bg-secondary').addClass('bg-warning');
+            }
+            $('#llm-base-url').text(config.llm.base_url || '-');
+            $('#llm-api-key').text(config.llm.api_key || '-');
+            $('#llm-model').text(config.llm.model || '-');
+
+            // Update Neo4j status display
+            if (validation.neo4j_configured) {
+                $('#neo4j-status').html('<i class="fas fa-check-circle me-1"></i>已配置')
+                                   .removeClass('bg-secondary').addClass('bg-success');
+            } else {
+                $('#neo4j-status').html('<i class="fas fa-exclamation-circle me-1"></i>未配置')
+                                   .removeClass('bg-secondary').addClass('bg-warning');
+            }
+            $('#neo4j-uri').text(config.neo4j.uri || '-');
+            $('#neo4j-username').text(config.neo4j.username || '-');
+            $('#neo4j-password').text(config.neo4j.password || '-');
+
+            // Fill form fields
+            $('#llm-backend').val(config.llm.backend || 'openai');
+            $('#llm-base-url-input').val(config.llm.base_url || '');
+            $('#llm-model-input').val(config.llm.model || 'deepseek-chat');
+            $('#neo4j-uri-input').val(config.neo4j.uri || 'bolt://localhost:7687');
+            $('#neo4j-username-input').val(config.neo4j.username || 'neo4j');
+            $('#neo4j-database-input').val(config.neo4j.database || 'neo4j');
+
+            // Note: Don't fill password field for security
+        }
+    }).fail(function() {
+        $('#llm-status, #neo4j-status').html('<i class="fas fa-times-circle me-1"></i>加载失败')
+                                        .removeClass('bg-secondary').addClass('bg-danger');
+    });
+}
+
+function saveConfiguration() {
+    const data = {
+        llm: {
+            backend: $('#llm-backend').val(),
+            base_url: $('#llm-base-url-input').val(),
+            api_key: $('#llm-api-key-input').val(),
+            model: $('#llm-model-input').val()
+        },
+        neo4j: {
+            uri: $('#neo4j-uri-input').val(),
+            username: $('#neo4j-username-input').val(),
+            database: $('#neo4j-database-input').val()
+        }
+    };
+
+    // Only include password if user entered a new one
+    const newPassword = $('#neo4j-password-input').val();
+    if (newPassword) {
+        data.neo4j.password = newPassword;
+    }
+
+    $('#save-status').html('<i class="fas fa-spinner fa-spin me-1"></i>保存中...');
+
+    $.ajax({
+        url: '/api/config',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function(response) {
+            if (response.success) {
+                $('#save-status').html('<i class="fas fa-check me-1"></i>保存成功!')
+                                 .removeClass('text-muted').addClass('text-success');
+                loadConfiguration();
+            } else {
+                $('#save-status').html('<i class="fas fa-times me-1"></i>' + response.error)
+                                 .removeClass('text-muted').addClass('text-danger');
+            }
+        },
+        error: function() {
+            $('#save-status').html('<i class="fas fa-times me-1"></i>保存失败')
+                             .removeClass('text-muted').addClass('text-danger');
+        }
+    });
+}
+
+function testConfiguration() {
+    $('#save-status').html('<i class="fas fa-spinner fa-spin me-1"></i>测试连接中...');
+
+    $.ajax({
+        url: '/api/config/validate',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ test_llm: true, test_neo4j: true }),
+        success: function(response) {
+            if (response.all_passed) {
+                $('#save-status').html('<i class="fas fa-check-circle me-1"></i>所有连接测试通过!')
+                                 .removeClass('text-muted').addClass('text-success');
+            } else {
+                let errorMsg = '';
+                if (!response.validation.llm.reachable && response.validation.llm.error) {
+                    errorMsg += 'LLM: ' + response.validation.llm.error + ' ';
+                }
+                if (!response.validation.neo4j.reachable && response.validation.neo4j.error) {
+                    errorMsg += 'Neo4j: ' + response.validation.neo4j.error;
+                }
+                $('#save-status').html('<i class="fas fa-exclamation-triangle me-1"></i>' + errorMsg)
+                                 .removeClass('text-muted').addClass('text-warning');
+            }
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON?.error || '测试失败';
+            $('#save-status').html('<i class="fas fa-times me-1"></i>' + error)
+                             .removeClass('text-muted').addClass('text-danger');
+        }
+    });
+}
+
+function resetConfiguration() {
+    $.ajax({
+        url: '/api/config/reset',
+        type: 'POST',
+        success: function(response) {
+            if (response.success) {
+                $('#save-status').html('<i class="fas fa-check me-1"></i>已恢复默认配置')
+                                 .removeClass('text-muted').addClass('text-success');
+                loadConfiguration();
+            }
+        },
+        error: function() {
+            $('#save-status').html('<i class="fas fa-times me-1"></i>恢复失败')
+                             .removeClass('text-muted').addClass('text-danger');
+        }
+    });
+}
+</script>
+{% endblock %}
