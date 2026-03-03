@@ -11,6 +11,17 @@ Configuration is now managed through the web interface and stored securely:
 DO NOT hardcode sensitive credentials in this file!
 """
 
+import os
+import logging
+
+# Configure logging first
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Import configuration manager
+from config.config_manager import get_config_manager
+from config.settings import get_config, DevelopmentConfig
+
 # Initialize configuration manager first
 config_manager = get_config_manager()
 
@@ -32,18 +43,12 @@ logger.info(f"[Config] Neo4j User: {os.environ.get('NEO4J_USER')}")
 logger.info(f"[Config] LLM Backend: {os.environ.get('LLM_BACKEND')}")
 logger.info(f"[Config] LLM Model: {os.environ.get('LLM_MODEL')}")
 
+# Import Flask and other modules after configuration
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-import logging
-from config.settings import get_config
-from config.config_manager import get_config_manager
 from src.parsing_manager import ParsingManager
 from src.knowledge_graph.graph_builder import GraphBuilder
 from src.qa.kg_qa_engine import KGQAEngine
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 # Initialize Flask app with configuration
 app = Flask(__name__)
