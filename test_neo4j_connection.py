@@ -6,9 +6,9 @@ Test Neo4j connection after fixing import conflict
 import sys
 import os
 
-# Set environment variables as in app.py
-os.environ["NEO4J_PASSWORD"] = "neo4j168"
+# Set environment variables - use config manager or default
 os.environ["NEO4J_USER"] = "neo4j"
+os.environ["NEO4J_PASSWORD"] = os.environ.get("NEO4J_PASSWORD", "password")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -17,6 +17,7 @@ from src.knowledge_graph.neo4j_adapter import Neo4jAdapter
 def test_neo4j_connection():
     """Test if Neo4j connection works after import fix"""
     print("Testing Neo4j connection...")
+    print(f"Using password from environment or default: {'*' * len(os.environ.get('NEO4J_PASSWORD', ''))}")
 
     try:
         # Create adapter instance

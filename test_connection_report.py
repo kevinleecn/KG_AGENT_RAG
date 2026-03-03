@@ -16,7 +16,7 @@ def test_neo4j_direct():
 
     uri = "bolt://localhost:7687"
     username = "neo4j"
-    password = os.environ.get("NEO4J_PASSWORD", "neo4j168")
+    password = os.environ.get("NEO4J_PASSWORD", "password")
 
     print(f"URI: {uri}")
     print(f"Username: {username}")
@@ -155,8 +155,8 @@ def main():
 
     # Set environment for Neo4j test
     if "NEO4J_PASSWORD" not in os.environ:
-        os.environ["NEO4J_PASSWORD"] = "neo4j168"
-        print("Note: Set NEO4J_PASSWORD environment variable to 'neo4j168'")
+        os.environ["NEO4J_PASSWORD"] = os.environ.get("NEO4J_PASSWORD", "password")
+        print("Note: Set NEO4J_PASSWORD environment variable to 'password'")
 
     results = {}
 
@@ -198,9 +198,9 @@ def main():
     if not neo4j_ok:
         print("1. Fix Neo4j connection:")
         print("   - Verify Neo4j service is running")
-        print("   - Check password (should be 'neo4j168')")
+        print("   - Check password (should be 'password')")
         print("   - Set NEO4J_PASSWORD environment variable")
-        print("   - Test with: python test_neo4j_auth.py neo4j168")
+        print("   - Test with: python test_neo4j_auth.py password")
 
     if not flask_ok:
         print("2. Start Flask application:")
@@ -235,12 +235,12 @@ def main():
     print("=" * 60)
     print("To make Neo4j password permanent, set environment variable:")
     print("  Windows (Command Prompt):")
-    print("    setx NEO4J_PASSWORD neo4j168")
+    print("    setx NEO4J_PASSWORD password")
     print("  Windows (PowerShell):")
-    print("    [Environment]::SetEnvironmentVariable('NEO4J_PASSWORD', 'neo4j168', 'User')")
+    print("    [Environment]::SetEnvironmentVariable('NEO4J_PASSWORD', 'password', 'User')")
     print("  Linux/Mac:")
-    print("    export NEO4J_PASSWORD=neo4j168")
-    print("    echo 'export NEO4J_PASSWORD=neo4j168' >> ~/.bashrc")
+    print("    export NEO4J_PASSWORD=password")
+    print("    echo 'export NEO4J_PASSWORD=password' >> ~/.bashrc")
 
     # Exit code
     if neo4j_ok and flask_ok:

@@ -53,7 +53,7 @@ if __name__ == "__main__":
         password = sys.argv[1]
     else:
         # Try environment variable
-        password = os.environ.get("NEO4J_PASSWORD", "neo4j168")
+        password = os.environ.get("NEO4J_PASSWORD", "password")
 
     # Test with default URI and username
     success = test_neo4j_connection(

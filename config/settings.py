@@ -36,10 +36,12 @@ class Config:
     EXTRACTION_CONFIDENCE_THRESHOLD = float(os.environ.get('EXTRACTION_CONFIDENCE_THRESHOLD', '0.7'))
 
     # LLM settings (optional, for enhanced extraction)
-    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY') or 'sk-0b0a00b2d4cc4d7d8dce645d5db1b739'
+    # IMPORTANT: Set OPENAI_API_KEY environment variable or configure via /settings page
+    # DO NOT hardcode API keys in this file!
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')  # No default - must be set by user
     LLM_BACKEND = os.environ.get('LLM_BACKEND', 'openai')  # openai, ollama, anthropic
-    LLM_MODEL = os.environ.get('LLM_MODEL', 'deepseek-chat')  # DeepSeek V3.2
-    OPENAI_BASE_URL = os.environ.get('OPENAI_BASE_URL') or 'https://api.deepseek.com'  # DeepSeek API base URL
+    LLM_MODEL = os.environ.get('LLM_MODEL', 'deepseek-chat')
+    OPENAI_BASE_URL = os.environ.get('OPENAI_BASE_URL')  # Must be set with API key
 
     # Visualization settings
     D3_MAX_NODES = int(os.environ.get('D3_MAX_NODES', '500'))

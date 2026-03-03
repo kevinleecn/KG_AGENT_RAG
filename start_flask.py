@@ -13,7 +13,8 @@ def set_environment():
     """Set Neo4j environment variables."""
     os.environ['NEO4J_URI'] = 'bolt://localhost:7687'
     os.environ['NEO4J_USER'] = 'neo4j'
-    os.environ['NEO4J_PASSWORD'] = 'neo4j168'
+    # IMPORTANT: Set NEO4J_PASSWORD via /settings page or environment variable
+    os.environ['NEO4J_PASSWORD'] = os.environ.get('NEO4J_PASSWORD', 'password')  # Default, change in production
     os.environ['FLASK_ENV'] = 'development'
 
     print("Environment variables set:")
@@ -21,6 +22,8 @@ def set_environment():
     print(f"  NEO4J_USER: {os.environ['NEO4J_USER']}")
     print(f"  NEO4J_PASSWORD: {'*' * len(os.environ['NEO4J_PASSWORD'])}")
     print(f"  FLASK_ENV: {os.environ['FLASK_ENV']}")
+    print()
+    print("NOTE: Configure Neo4j password via /settings page for secure storage.")
 
 def find_flask_process():
     """Find and return Flask process ID if running."""

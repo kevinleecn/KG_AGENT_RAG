@@ -8,7 +8,7 @@ import sys
 from neo4j import GraphDatabase
 
 # Set environment variable for Neo4j password
-os.environ["NEO4J_PASSWORD"] = "neo4j168"
+os.environ["NEO4J_PASSWORD"] = os.environ.get("NEO4J_PASSWORD", "password")
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

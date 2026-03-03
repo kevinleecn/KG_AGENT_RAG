@@ -16,7 +16,7 @@ def test_neo4j():
 
     uri = "bolt://localhost:7687"
     username = "neo4j"
-    password = os.environ.get("NEO4J_PASSWORD", "neo4j168")
+    password = os.environ.get("NEO4J_PASSWORD", "password")
 
     print(f"URI: {uri}")
     print(f"Username: {username}")
@@ -135,7 +135,7 @@ def main():
 
     # Ensure password is set
     if "NEO4J_PASSWORD" not in os.environ:
-        os.environ["NEO4J_PASSWORD"] = "neo4j168"
+        os.environ["NEO4J_PASSWORD"] = os.environ.get("NEO4J_PASSWORD", "password")
 
     # Run tests
     neo4j_ok, entities, rels = test_neo4j()
@@ -161,14 +161,14 @@ def main():
     print("=" * 60)
 
     if neo4j_ok:
-        print("[OK] Neo4j connection is WORKING with password 'neo4j168'")
+        print("[OK] Neo4j connection is WORKING with password 'password'")
         print("  To make permanent, set environment variable:")
-        print("    Windows: setx NEO4J_PASSWORD neo4j168")
-        print("    Linux/Mac: export NEO4J_PASSWORD=neo4j168")
+        print("    Windows: setx NEO4J_PASSWORD password")
+        print("    Linux/Mac: export NEO4J_PASSWORD=password")
     else:
         print("[ERROR] Neo4j connection FAILED")
         print("  Check Neo4j service is running")
-        print("  Verify password is 'neo4j168'")
+        print("  Verify password is 'password'")
 
     if flask_ok:
         print("[OK] Flask application is RUNNING on http://localhost:5000")
