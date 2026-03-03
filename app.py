@@ -316,9 +316,15 @@ def validate_configuration():
                         auth=(neo4j_config.get('username', 'neo4j'), neo4j_config.get('password', '')),
                         database=neo4j_config.get('database', 'neo4j')
                     )
-                    # Test connection with a simple query
-                    adapter.query("RETURN 1")
-                    results['neo4j']['reachable'] = True
+                    # Test connection using connect() method
+                    adapter.connect()
+                    # Verify with health_check
+                    health = adapter.health_check()
+                    if health.get('status') == 'healthy' or adapter.connected:
+                        results['neo4j']['reachable'] = True
+                    else:
+                        results['neo4j']['error'] = f"Neo4j health check failed: {health}"
+                    adapter.disconnect()
                 except Exception as e:
                     results['neo4j']['error'] = str(e)
                     logger.warning(f"Neo4j connection test failed: {e}")
