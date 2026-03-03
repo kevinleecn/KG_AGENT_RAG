@@ -210,14 +210,14 @@ def save_configuration():
     {
         "llm": {
             "base_url": "https://api.deepseek.com",
-            "api_key": "sk-xxx",
+            "api_key": "<your-api-key>",
             "model": "deepseek-chat",
             "backend": "openai"
         },
         "neo4j": {
             "uri": "bolt://localhost:7687",
             "username": "neo4j",
-            "password": "password123",
+            "password": "<your-password>",
             "database": "neo4j"
         }
     }
