@@ -50,6 +50,26 @@ cat .gitignore  # 确保包含 .env 和 config/
 
 **预期结果**: 除了 `.env.example` 中的示例外，不应出现真实 API Key
 
+### 1.5 清理 Python 字节码缓存 ⭐ 新增
+
+```bash
+# 使用清理脚本
+python clean_bytecode.py
+
+# 或手动清理
+find . -type d -name "__pycache__" -exec rm -rf {} +
+find . -name "*.pyc" -delete
+```
+
+**重要性**: `.pyc` 文件是编译后的字节码，可能包含源代码中的敏感字符串（密码、API Key 等），即使源代码已清理，缓存文件仍可能泄露信息。
+
+**验证**:
+```bash
+# 确认清理完成
+find . -name "*.pyc" -o -name "__pycache__" | wc -l
+# 应输出 0
+```
+
 ### 2. 验证配置功能
 
 ```bash
@@ -136,6 +156,7 @@ jobs:
 - [ ] `config/user_config.json` 在 `.gitignore` 中
 - [ ] `config/.encryption_key` 在 `.gitignore` 中
 - [ ] 日志文件中没有泄露敏感信息
+- [ ] **已清理 `__pycache__` 和 `.pyc` 文件**
 
 ### 配置安全
 - [ ] 加密密钥文件权限设置为 600（仅所有者可读写）
