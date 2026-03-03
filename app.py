@@ -310,10 +310,10 @@ def validate_configuration():
             if data.get('test_neo4j', True):
                 try:
                     from src.knowledge_graph.neo4j_adapter import Neo4jAdapter
+                    # Neo4jAdapter uses auth=(username, password) tuple
                     adapter = Neo4jAdapter(
                         uri=neo4j_config.get('uri', 'bolt://localhost:7687'),
-                        user=neo4j_config.get('username', 'neo4j'),
-                        password=neo4j_config.get('password', ''),
+                        auth=(neo4j_config.get('username', 'neo4j'), neo4j_config.get('password', '')),
                         database=neo4j_config.get('database', 'neo4j')
                     )
                     # Test connection with a simple query
